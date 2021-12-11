@@ -49,7 +49,6 @@ class MidiSupport():
     def load_midi_file(self, file_path):
         return pretty_midi.PrettyMIDI(file_path)
 
-
     def midi_to_16_beats_processed(self, midi_file):
         return self.prepare_song(midi_file)
 

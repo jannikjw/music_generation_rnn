@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-
-from src.utils.midi_support import RNNMusicDataSetPreparer
+from src.utils.midi_support import RNNMusicDataSetPreparer, load_music
 
 def mse_with_positive_pressure(y_true: tf.Tensor, y_pred: tf.Tensor):
     mse = (y_true - y_pred) ** 2
@@ -160,12 +159,13 @@ def predict_notes_256_sigmoid(model, train_data, size=10):
 
 class RNNMusicExperiment():
 
-    def __init__(self, sequence_length=15, epochs=10, learning_rate=0.001, batch_size=64) -> None:
+    def __init__(self, sequence_length=15, epochs=10, learning_rate=0.001, batch_size=64, num_music_files=2) -> None:
         self.commmon_config = {
             "seq_length": sequence_length,
             "learning_rate": learning_rate,
             "epochs": epochs,
             "batch_size": batch_size,
+            "num_music_files": num_music_files,
         }
         return
 
@@ -180,6 +180,13 @@ class RNNMusicExperiment():
         print(self.predict_data())
         # Save music file?
         # Save music output plot?
+
+    def basic_load_data(self):
+        loaded = load_music(
+            num_files=self.commmon_config["num_music_files"],
+            seq_length=self.common_config["seq_length"]
+            )
+        return loaded
 
     def load_data(self):
         raise NotImplementedError
@@ -210,7 +217,6 @@ class RNNMusicExperiment():
             epochs=self.commmon_config["epochs"],
             callbacks=self.callbacks,
         )
-
         raise history
 
     def predict_data(self):

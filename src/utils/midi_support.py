@@ -229,7 +229,7 @@ def load_music(data_dir="", num_files=15, seq_length=15):
     download_and_save_data()
 
     # filenames = glob.glob(str("music_generation_rnn/training_data/classical/**/**/*.mid*"))
-    filenames = glob.glob(str(data_dir/'**/*.mid*'))
+    filenames = glob.glob(str('data/maestro-v2.0.0/**/*.mid*'))
     if len(filenames) == 0:
         raise Exception("Couldn't find the downloaded data :(")
 

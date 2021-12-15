@@ -98,7 +98,7 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
     # model.evaluate(train_ds, return_dict=True)
 
 
-    self.callbacks = [
+    callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
             filepath='./training_checkpoints/ckpt_{epoch}',
             save_weights_only=True),
@@ -108,6 +108,7 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
             verbose=1,
             restore_best_weights=True)
     ]
+    return model,  callbacks
 
    
 # predicted2, pred_probs = predict_notes(100)
@@ -201,7 +202,7 @@ class RNNMusicExperiment():
     def train_model(self, prepared_data):
 
         
-        model = self.get_model()
+        model, callbacks = self.get_model()
 
         # seq_length, _ = song_df.shape
         # buffer_size = n_notes - seq_length  # the number of items in the dataset
@@ -215,7 +216,7 @@ class RNNMusicExperiment():
         history = model.fit(
             train_ds,
             epochs=self.common_config["epochs"],
-            callbacks=self.callbacks,
+            callbacks=callbacks,
         )
         raise history
 
@@ -233,11 +234,13 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
         # TODO: Some models return a DataSet and some return X_train, y_train
         return seq_ds
 
-    def train_model(self):
-        model_4_lstm_layer_limited_connectivity(
+    def get_model(self):
+        print(f"in get_model self is {self}")
+        model, callbacks = model_4_lstm_layer_limited_connectivity(
             learning_rate=self.common_config["learning_rate"],
             seq_length=self.common_config["seq_length"]
         )
+        return model, callbacks
         
     def predict_data(self, loaded_data):
         return predict_notes_256_sigmoid(model=self.model, train_data=loaded_data)

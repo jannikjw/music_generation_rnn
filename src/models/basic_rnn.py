@@ -47,8 +47,8 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
 
     Model
     - 4 LSTM Layers
-    - Model expects input shape to be 132 x seq length
-        - 132 being 128 notes + 4 beats
+    - Model expects input shape to be 260 x seq length
+        - 260 being 128 notes + 128 articulations + 4 beats
     - Model has a kernel regularizer to encourage limited connectivity
 
     Loss:
@@ -61,7 +61,7 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
         seq_length (int, optional): [description]. Defaults to 15.
     """
     
-    input_shape = (seq_length, 132)
+    input_shape = (seq_length, 260)
     
 
     inputs = tf.keras.Input(input_shape)

@@ -245,7 +245,8 @@ class RNNMusicExperiment():
         # Save training stats?
         # Pickle the model?
 
-        print(self.predict_data())
+        print("Trying to predict some data")
+        print(self.predict_data(loaded_data))
         # Save music file?
         # Save music output plot?
 

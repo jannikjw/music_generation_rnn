@@ -346,7 +346,7 @@ if __name__ == "__main__":
     
     learning_rate = 0.001
     training_epoch = 100
-    for sequence_length in [15]#, 32]:
+    for sequence_length in [15]:#, 32]:
         print("Trying Exp 1")
         exp = RNNMusicExperimentOne(
             sequence_length=sequence_length,

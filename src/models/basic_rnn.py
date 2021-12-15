@@ -65,13 +65,13 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
     
 
     inputs = tf.keras.Input(input_shape)
-    x = tf.keras.layers.LSTM(128, kernel_regularizer=kernel_regularizer_a, return_sequences=True)(inputs)
-    y = tf.keras.layers.LSTM(128, kernel_regularizer=recurrent_kernel_regularizer_a, return_sequences=True)(x)
-    z = tf.keras.layers.LSTM(128, recurrent_regularizer=tf.keras.regularizers.L2(1), return_sequences=True)(y)
-    k = tf.keras.layers.LSTM(128, recurrent_regularizer=tf.keras.regularizers.L2(1))(z)
+    x = tf.keras.layers.LSTM(256, kernel_regularizer=kernel_regularizer_a, return_sequences=True)(inputs)
+    y = tf.keras.layers.LSTM(256, kernel_regularizer=recurrent_kernel_regularizer_a, return_sequences=True)(x)
+    z = tf.keras.layers.LSTM(256, recurrent_regularizer=tf.keras.regularizers.L2(1), return_sequences=True)(y)
+    k = tf.keras.layers.LSTM(256, recurrent_regularizer=tf.keras.regularizers.L2(1))(z)
 
     outputs = {
-    'pitch': tf.keras.layers.Dense(128, activation="relu", name='pitch')(k),
+    'pitch': tf.keras.layers.Dense(256, activation="relu", name='pitch')(k),
     }
 
     model = tf.keras.Model(inputs, outputs)
@@ -110,7 +110,7 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
     ]
     return model,  callbacks
 
-def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
+def model_5_lstm_layer_with_artic(seq_length=15, learning_rate = 0.0005):
     """This model has:
 
     Model
@@ -132,13 +132,13 @@ def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
     
     print("in get model")
     inputs = tf.keras.Input(input_shape)
-    x = tf.keras.layers.LSTM(128, return_sequences=True)(inputs)
-    y = tf.keras.layers.LSTM(128, return_sequences=True)(x)
-    z = tf.keras.layers.LSTM(128, return_sequences=True)(y)
-    k = tf.keras.layers.LSTM(128, return_sequences=False)(z)
+    x = tf.keras.layers.LSTM(256, return_sequences=True)(inputs)
+    y = tf.keras.layers.LSTM(256, return_sequences=True)(x)
+    z = tf.keras.layers.LSTM(256, return_sequences=True)(y)
+    k = tf.keras.layers.LSTM(256, return_sequences=False)(z)
 
     outputs = {
-    'pitch': tf.keras.layers.Dense(128, activation="relu", name='pitch')(k),
+    'pitch': tf.keras.layers.Dense(256, activation="relu", name='pitch')(k),
     }
 
     model = tf.keras.Model(inputs, outputs)
@@ -303,7 +303,7 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
 
     def get_model(self):
         print(f"in get_model self is {self}")
-        model, callbacks = model_5_lstm_layer(
+        model, callbacks = model_5_lstm_layer_with_artic(
             learning_rate=self.common_config["learning_rate"],
             seq_length=self.common_config["seq_length"]
         )

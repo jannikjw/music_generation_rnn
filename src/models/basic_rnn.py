@@ -160,7 +160,7 @@ def predict_notes_256_sigmoid(model, train_data, size=10):
 class RNNMusicExperiment():
 
     def __init__(self, sequence_length=15, epochs=10, learning_rate=0.001, batch_size=64, num_music_files=2) -> None:
-        self.commmon_config = {
+        self.common_config = {
             "seq_length": sequence_length,
             "learning_rate": learning_rate,
             "epochs": epochs,
@@ -183,7 +183,7 @@ class RNNMusicExperiment():
 
     def basic_load_data(self):
         loaded = load_music(
-            num_files=self.commmon_config["num_music_files"],
+            num_files=self.common_config["num_music_files"],
             seq_length=self.common_config["seq_length"]
             )
         return loaded
@@ -208,13 +208,13 @@ class RNNMusicExperiment():
         buffer_size = 100
         train_ds = (prepared_data
                     .shuffle(buffer_size)
-                    .batch(self.commmon_config["batch_size"], drop_remainder=True)
+                    .batch(self.common_config["batch_size"], drop_remainder=True)
                     .cache()
                     .prefetch(tf.data.experimental.AUTOTUNE))
 
         history = model.fit(
             train_ds,
-            epochs=self.commmon_config["epochs"],
+            epochs=self.common_config["epochs"],
             callbacks=self.callbacks,
         )
         raise history
@@ -235,8 +235,8 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
 
     def train_model(self):
         model_4_lstm_layer_limited_connectivity(
-            learning_rate=self.commmon_config["learning_rate"],
-            seq_length=self.commmon_config["seq_length"]
+            learning_rate=self.common_config["learning_rate"],
+            seq_length=self.common_config["seq_length"]
         )
         
     def predict_data(self, loaded_data):

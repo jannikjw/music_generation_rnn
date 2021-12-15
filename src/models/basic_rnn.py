@@ -303,7 +303,7 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
 
     def get_model(self):
         print(f"in get_model self is {self}")
-        model, callbacks = model_4_lstm_layer_limited_connectivity(
+        model, callbacks = model_5_lstm_layer(
             learning_rate=self.common_config["learning_rate"],
             seq_length=self.common_config["seq_length"]
         )

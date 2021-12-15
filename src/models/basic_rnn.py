@@ -241,12 +241,12 @@ class RNNMusicExperiment():
 
         loaded_data = self.load_data()
         prepared_data = self.prepare_data(loaded_data)
-        history = self.train_model(prepared_data)
+        model, history = self.train_model(prepared_data)
         # Save training stats?
         # Pickle the model?
 
         print("Trying to predict some data")
-        print(self.predict_data(loaded_data))
+        print(self.predict_data(model, loaded_data))
         # Save music file?
         # Save music output plot?
 
@@ -286,7 +286,7 @@ class RNNMusicExperiment():
             epochs=self.common_config["epochs"],
             callbacks=callbacks,
         )
-        return history
+        return model, history
 
     def predict_data(self):
         raise NotImplementedError
@@ -310,8 +310,8 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
         )
         return model, callbacks
         
-    def predict_data(self, loaded_data):
-        return predict_notes_256_sigmoid(model=self.model, train_data=loaded_data)
+    def predict_data(self, model, loaded_data):
+        return predict_notes_256_sigmoid(model=model, train_data=loaded_data)
 
 
 class RNNMusicExperimentTwo(RNNMusicExperiment):
@@ -337,8 +337,8 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
         )
         return model, callbacks
         
-    def predict_data(self, loaded_data):
-        return predict_notes_256_sigmoid(model=self.model, train_data=loaded_data)
+    def predict_data(self, model, loaded_data):
+        return predict_notes_256_sigmoid(model=model, train_data=loaded_data)
 
 
 

@@ -311,7 +311,7 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
         return model, callbacks
         
     def predict_data(self, model, loaded_data):
-        return predict_notes_256_sigmoid(model=model, train_data=loaded_data)
+        return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
 
 
 class RNNMusicExperimentTwo(RNNMusicExperiment):
@@ -338,7 +338,7 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
         return model, callbacks
         
     def predict_data(self, model, loaded_data):
-        return predict_notes_256_sigmoid(model=model, train_data=loaded_data)
+        return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
 
 
 

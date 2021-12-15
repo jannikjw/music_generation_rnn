@@ -285,7 +285,7 @@ class RNNMusicExperiment():
             epochs=self.common_config["epochs"],
             callbacks=callbacks,
         )
-        raise history
+        return history
 
     def predict_data(self):
         raise NotImplementedError
@@ -313,14 +313,50 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
         return predict_notes_256_sigmoid(model=self.model, train_data=loaded_data)
 
 
+class RNNMusicExperimentTwo(RNNMusicExperiment):
+    """Builds on Exp 1 by adding limited connectivity
+
+    Args:
+        RNNMusicExperiment ([type]): [description]
+    """
+    
+    def load_data(self):
+        return self.basic_load_data()
+
+    def prepare_data(self, loaded_data):
+        seq_ds = RNNMusicDataSetPreparer().prepare(loaded_data)
+        # TODO: Some models return a DataSet and some return X_train, y_train
+        return seq_ds
+
+    def get_model(self):
+        print(f"in get_model self is {self}")
+        model, callbacks = model_4_lstm_layer_limited_connectivity(
+            learning_rate=self.common_config["learning_rate"],
+            seq_length=self.common_config["seq_length"]
+        )
+        return model, callbacks
+        
+    def predict_data(self, loaded_data):
+        return predict_notes_256_sigmoid(model=self.model, train_data=loaded_data)
+
+
 
 # Main training loop
 if __name__ == "__main__":
     
     learning_rate = 0.001
     training_epoch = 100
-    for sequence_length in [15, 32]:
+    for sequence_length in [15]#, 32]:
+        print("Trying Exp 1")
         exp = RNNMusicExperimentOne(
+            sequence_length=sequence_length,
+            learning_rate=learning_rate,
+            epochs=training_epoch)
+        exp.run()
+
+        
+        print("Trying Exp 2")
+        exp = RNNMusicExperimentTwo(
             sequence_length=sequence_length,
             learning_rate=learning_rate,
             epochs=training_epoch)

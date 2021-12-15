@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import pygame
 import pretty_midi
+import tensorflow as tf
 
 
 class MidiSupport():
@@ -109,6 +110,105 @@ class MidiSupport():
         
         
         return self.add_beat_location(pd.DataFrame(play_articulated).T)
+
+
+    def piano_roll_to_pretty_midi(piano_roll, fs=100, program=0):
+        '''Convert a Piano Roll array into a PrettyMidi object
+        with a single instrument.
+        Parameters
+        ----------
+        piano_roll : np.ndarray, shape=(128,frames), dtype=int
+            Piano roll of one instrument
+        fs : int
+            Sampling frequency of the columns, i.e. each column is spaced apart
+            by ``1./fs`` seconds.
+        program : int
+            The program number of the instrument.
+        Returns
+        -------
+        midi_object : pretty_midi.PrettyMIDI
+            A pretty_midi.PrettyMIDI class instance describing
+            the piano roll.
+        '''
+        notes, frames = piano_roll.shape
+        pm = pretty_midi.PrettyMIDI()
+        instrument = pretty_midi.Instrument(program=program)
+
+        # pad 1 column of zeros so we can acknowledge inital and ending events
+        piano_roll = np.pad(piano_roll, [(0, 0), (1, 1)], 'constant')
+
+        # use changes in velocities to find note on / note off events
+        velocity_changes = np.nonzero(np.diff(piano_roll).T)
+
+        # keep track on velocities and note on times
+        prev_velocities = np.zeros(notes, dtype=int)
+        note_on_time = np.zeros(notes)
+
+        for time, note in zip(*velocity_changes):
+            # use time + 1 because of padding above
+            velocity = piano_roll[note, time + 1]
+            time = time / fs
+            if velocity > 0:
+                if prev_velocities[note] == 0:
+                    note_on_time[note] = time
+                    prev_velocities[note] = velocity
+            else:
+                pm_note = pretty_midi.Note(
+                    velocity=prev_velocities[note],
+                    pitch=note,
+                    start=note_on_time[note],
+                    end=time)
+                instrument.notes.append(pm_note)
+                prev_velocities[note] = 0
+        pm.instruments.append(instrument)
+        return pm
+
+
+class RNNMusicDataSetPreparer():
+
+    def __init__(self) -> None:
+        pass
+
+
+    def prepare(self, all_song_dfs, seq_length=15):
+
+        print(f"all_song_dfs.shape in is {all_song_dfs.shape}")
+        song_tensor=tf.convert_to_tensor(all_song_dfs)
+        # song_tensor_reshape = tf.reshape(song_tensor, (6261, 128))
+        dataset = tf.data.Dataset.from_tensor_slices(song_tensor)
+        vocab_size = 128
+        """Returns TF Dataset of sequence and label examples."""
+        seq_length = seq_length+1
+
+        # Take 1 extra for the labels
+        windows = dataset.window(seq_length, shift=1, stride=1,
+                                    drop_remainder=True)
+
+        # `flat_map` flattens the" dataset of datasets" into a dataset of tensors
+        flatten = lambda x: x.batch(seq_length, drop_remainder=True)
+        sequences = windows.flat_map(flatten)
+
+        # Normalize note pitch
+        def scale_pitch(x):
+            x = x/vocab_size
+            return x
+
+        # Split the labels
+        def split_labels(sequences):
+            inputs = sequences[:-1]
+            print(f"sequences.shape is {sequences.shape}")
+            # labels_dense = sequences[-1][0]
+            labels_dense = tf.reshape(sequences[-1][0:256], (256, 1))
+            return inputs, {"pitch": labels_dense}
+
+        seq_ds = sequences.map(split_labels, num_parallel_calls=tf.data.AUTOTUNE)
+
+
+        X_tst, y_tst = list(seq_ds.take(1))[0]
+        print(f"X_tst.shape out is {X_tst.shape}")
+        print(f"y_tst.shape out is {X_tst.shape}")
+
+        return seq_ds
 
 
 if __name__ == "__main__":

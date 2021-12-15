@@ -3,11 +3,6 @@ import numpy as np
 import tensorflow as tf
 from src.utils.midi_support import RNNMusicDataSetPreparer, load_music
 
-def mse_with_positive_pressure(y_true: tf.Tensor, y_pred: tf.Tensor):
-    mse = (y_true - y_pred) ** 2
-    positive_pressure = 10 * tf.maximum(-y_pred, 0.0)
-    return tf.reduce_mean(mse + positive_pressure)
-
 
 def get_fat_diagonal_mat(mat_len, one_dis):
     ones = np.ones((mat_len, mat_len), dtype=np.float32)
@@ -39,8 +34,6 @@ def recurrent_kernel_regularizer_a(recurrent_kernel_weights):
    mask_stacked = 1 - tf.concat([mask, mask, mask, mask], axis=0)
    penality = tf.math.reduce_sum((tf.math.abs(recurrent_kernel_weights) * tf.transpose(mask_stacked)))
    return 0.01 * penality
-
-
 
 def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.0005):
     """This model has:
@@ -176,11 +169,6 @@ def model_5_lstm_layer_with_artic(seq_length=15, learning_rate = 0.0005):
             restore_best_weights=True)
     ]
     return model,  callbacks
-
-   
-# predicted2, pred_probs = predict_notes(100)
-
-# predicted2, pred_probs = predict_notes(100)
 
 def predict_notes_256_sigmoid(model, train_data, size=10):
     """Predict notes
@@ -339,7 +327,6 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
         
     def predict_data(self, model, loaded_data):
         return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
-
 
 
 # Main training loop

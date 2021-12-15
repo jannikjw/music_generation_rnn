@@ -110,6 +110,73 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
     ]
     return model,  callbacks
 
+def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
+    """This model has:
+
+    Model
+    - 4 LSTM Layers
+    - Model expects input shape to be 260 x seq length
+        - 260 being 128 notes + 128 articulations + 4 beats
+
+    Loss:
+    - This model uses CategoricalCrossentropy
+
+    Optimizer
+    - This model uses the ADAM optimizer
+
+    Args:
+        seq_length (int, optional): [description]. Defaults to 15.
+    """
+    
+    input_shape = (seq_length, 260)
+    
+
+    inputs = tf.keras.Input(input_shape)
+    x = tf.keras.layers.LSTM(128)(inputs)
+    y = tf.keras.layers.LSTM(128)(x)
+    z = tf.keras.layers.LSTM(128)(y)
+    k = tf.keras.layers.LSTM(128)(z)
+
+    outputs = {
+    'pitch': tf.keras.layers.Dense(128, activation="relu", name='pitch')(k),
+    }
+
+    model = tf.keras.Model(inputs, outputs)
+
+    loss = {
+        'pitch': tf.keras.losses.CategoricalCrossentropy(
+            from_logits=True)
+    }
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+
+    model.compile(loss=loss, optimizer=optimizer)
+
+    model.summary()
+
+
+    model.compile(
+        loss=loss,
+        loss_weights={
+            'pitch': 1,
+        },
+        optimizer=optimizer,
+    )
+    # model.evaluate(train_ds, return_dict=True)
+
+
+    callbacks = [
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath='./training_checkpoints/ckpt_{epoch}',
+            save_weights_only=True),
+        tf.keras.callbacks.EarlyStopping(
+            monitor='loss',
+            patience=5,
+            verbose=1,
+            restore_best_weights=True)
+    ]
+    return model,  callbacks
+
    
 # predicted2, pred_probs = predict_notes(100)
 

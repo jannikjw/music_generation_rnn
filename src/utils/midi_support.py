@@ -3,7 +3,7 @@
 """
 import pandas as pd
 import numpy as np
-import pygame
+#import pygame
 import pretty_midi
 import tensorflow as tf
 

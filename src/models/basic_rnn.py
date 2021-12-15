@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 
-from utils.midi_support import RNNMusicDataSetPreparer
+from src.utils.midi_support import RNNMusicDataSetPreparer
 
 def mse_with_positive_pressure(y_true: tf.Tensor, y_pred: tf.Tensor):
     mse = (y_true - y_pred) ** 2
@@ -177,7 +177,7 @@ class RNNMusicExperiment():
         # Save training stats?
         # Pickle the model?
 
-        self.predict_data()
+        print(self.predict_data())
         # Save music file?
         # Save music output plot?
 
@@ -229,7 +229,7 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
 
     def train_model(self):
         model_4_lstm_layer_limited_connectivity(
-            learning_rate=self.commmon_config["learning_rate"]
+            learning_rate=self.commmon_config["learning_rate"],
             seq_length=self.commmon_config["seq_length"]
         )
         
@@ -247,5 +247,6 @@ if __name__ == "__main__":
         exp = RNNMusicExperimentOne(
             sequence_length=sequence_length,
             learning_rate=learning_rate,
-            training_epoch=training_epoch)
+            epochs=training_epoch)
+        exp.run()
 

@@ -3,11 +3,6 @@ import numpy as np
 import tensorflow as tf
 from src.utils.midi_support import RNNMusicDataSetPreparer, load_music
 
-def mse_with_positive_pressure(y_true: tf.Tensor, y_pred: tf.Tensor):
-    mse = (y_true - y_pred) ** 2
-    positive_pressure = 10 * tf.maximum(-y_pred, 0.0)
-    return tf.reduce_mean(mse + positive_pressure)
-
 
 def get_fat_diagonal_mat(mat_len, one_dis):
     ones = np.ones((mat_len, mat_len), dtype=np.float32)
@@ -40,8 +35,6 @@ def recurrent_kernel_regularizer_a(recurrent_kernel_weights):
    penality = tf.math.reduce_sum((tf.math.abs(recurrent_kernel_weights) * tf.transpose(mask_stacked)))
    return 0.01 * penality
 
-
-
 def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.0005):
     """This model has:
 
@@ -65,13 +58,13 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
     
 
     inputs = tf.keras.Input(input_shape)
-    x = tf.keras.layers.LSTM(128, kernel_regularizer=kernel_regularizer_a, return_sequences=True)(inputs)
-    y = tf.keras.layers.LSTM(128, kernel_regularizer=recurrent_kernel_regularizer_a, return_sequences=True)(x)
-    z = tf.keras.layers.LSTM(128, recurrent_regularizer=tf.keras.regularizers.L2(1), return_sequences=True)(y)
-    k = tf.keras.layers.LSTM(128, recurrent_regularizer=tf.keras.regularizers.L2(1))(z)
+    x = tf.keras.layers.LSTM(256, kernel_regularizer=kernel_regularizer_a, return_sequences=True)(inputs)
+    y = tf.keras.layers.LSTM(256, kernel_regularizer=recurrent_kernel_regularizer_a, return_sequences=True)(x)
+    z = tf.keras.layers.LSTM(256, recurrent_regularizer=tf.keras.regularizers.L2(1), return_sequences=True)(y)
+    k = tf.keras.layers.LSTM(256, recurrent_regularizer=tf.keras.regularizers.L2(1))(z)
 
     outputs = {
-    'pitch': tf.keras.layers.Dense(128, activation="relu", name='pitch')(k),
+    'pitch': tf.keras.layers.Dense(256, activation="relu", name='pitch')(k),
     }
 
     model = tf.keras.Model(inputs, outputs)
@@ -110,7 +103,7 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
     ]
     return model,  callbacks
 
-def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
+def model_5_lstm_layer_with_artic(seq_length=15, learning_rate = 0.0005):
     """This model has:
 
     Model
@@ -130,15 +123,15 @@ def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
     
     input_shape = (seq_length, 260)
     
-
+    print("in get model")
     inputs = tf.keras.Input(input_shape)
-    x = tf.keras.layers.LSTM(128)(inputs)
-    y = tf.keras.layers.LSTM(128)(x)
-    z = tf.keras.layers.LSTM(128)(y)
-    k = tf.keras.layers.LSTM(128)(z)
+    x = tf.keras.layers.LSTM(256, return_sequences=True)(inputs)
+    y = tf.keras.layers.LSTM(256, return_sequences=True)(x)
+    z = tf.keras.layers.LSTM(256, return_sequences=True)(y)
+    k = tf.keras.layers.LSTM(256, return_sequences=False)(z)
 
     outputs = {
-    'pitch': tf.keras.layers.Dense(128, activation="relu", name='pitch')(k),
+    'pitch': tf.keras.layers.Dense(256, activation="relu", name='pitch')(k),
     }
 
     model = tf.keras.Model(inputs, outputs)
@@ -150,7 +143,7 @@ def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-    model.compile(loss=loss, optimizer=optimizer)
+    #model.compile(loss=loss, optimizer=optimizer)
 
     model.summary()
 
@@ -176,11 +169,6 @@ def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
             restore_best_weights=True)
     ]
     return model,  callbacks
-
-   
-# predicted2, pred_probs = predict_notes(100)
-
-# predicted2, pred_probs = predict_notes(100)
 
 def predict_notes_256_sigmoid(model, train_data, size=10):
     """Predict notes
@@ -241,11 +229,12 @@ class RNNMusicExperiment():
 
         loaded_data = self.load_data()
         prepared_data = self.prepare_data(loaded_data)
-        history = self.train_model(prepared_data)
+        model, history = self.train_model(prepared_data)
         # Save training stats?
         # Pickle the model?
 
-        print(self.predict_data())
+        print("Trying to predict some data")
+        print(self.predict_data(model, loaded_data))
         # Save music file?
         # Save music output plot?
 
@@ -270,7 +259,7 @@ class RNNMusicExperiment():
 
         
         model, callbacks = self.get_model()
-
+        print(f"type prepared_data is {type(prepared_data)}")
         # seq_length, _ = song_df.shape
         # buffer_size = n_notes - seq_length  # the number of items in the dataset
         buffer_size = 100
@@ -285,7 +274,7 @@ class RNNMusicExperiment():
             epochs=self.common_config["epochs"],
             callbacks=callbacks,
         )
-        raise history
+        return model, history
 
     def predict_data(self):
         raise NotImplementedError
@@ -303,15 +292,41 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
 
     def get_model(self):
         print(f"in get_model self is {self}")
+        model, callbacks = model_5_lstm_layer_with_artic(
+            learning_rate=self.common_config["learning_rate"],
+            seq_length=self.common_config["seq_length"]
+        )
+        return model, callbacks
+        
+    def predict_data(self, model, loaded_data):
+        return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
+
+
+class RNNMusicExperimentTwo(RNNMusicExperiment):
+    """Builds on Exp 1 by adding limited connectivity
+
+    Args:
+        RNNMusicExperiment ([type]): [description]
+    """
+    
+    def load_data(self):
+        return self.basic_load_data()
+
+    def prepare_data(self, loaded_data):
+        seq_ds = RNNMusicDataSetPreparer().prepare(loaded_data)
+        # TODO: Some models return a DataSet and some return X_train, y_train
+        return seq_ds
+
+    def get_model(self):
+        print(f"in get_model self is {self}")
         model, callbacks = model_4_lstm_layer_limited_connectivity(
             learning_rate=self.common_config["learning_rate"],
             seq_length=self.common_config["seq_length"]
         )
         return model, callbacks
         
-    def predict_data(self, loaded_data):
-        return predict_notes_256_sigmoid(model=self.model, train_data=loaded_data)
-
+    def predict_data(self, model, loaded_data):
+        return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
 
 
 # Main training loop
@@ -319,8 +334,17 @@ if __name__ == "__main__":
     
     learning_rate = 0.001
     training_epoch = 100
-    for sequence_length in [15, 32]:
+    for sequence_length in [15]:#, 32]:
+        print("Trying Exp 1")
         exp = RNNMusicExperimentOne(
+            sequence_length=sequence_length,
+            learning_rate=learning_rate,
+            epochs=training_epoch)
+        exp.run()
+
+        
+        print("Trying Exp 2")
+        exp = RNNMusicExperimentTwo(
             sequence_length=sequence_length,
             learning_rate=learning_rate,
             epochs=training_epoch)

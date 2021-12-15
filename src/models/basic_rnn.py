@@ -130,12 +130,12 @@ def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
     
     input_shape = (seq_length, 260)
     
-
+    print("in get model")
     inputs = tf.keras.Input(input_shape)
-    x = tf.keras.layers.LSTM(128)(inputs)
-    y = tf.keras.layers.LSTM(128)(x)
-    z = tf.keras.layers.LSTM(128)(y)
-    k = tf.keras.layers.LSTM(128)(z)
+    x = tf.keras.layers.LSTM(128, return_sequences=True)(inputs)
+    y = tf.keras.layers.LSTM(128, return_sequences=True)(x)
+    z = tf.keras.layers.LSTM(128, return_sequences=True)(y)
+    k = tf.keras.layers.LSTM(128, return_sequences=False)(z)
 
     outputs = {
     'pitch': tf.keras.layers.Dense(128, activation="relu", name='pitch')(k),
@@ -150,7 +150,7 @@ def model_5_lstm_layer(seq_length=15, learning_rate = 0.0005):
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-    model.compile(loss=loss, optimizer=optimizer)
+    #model.compile(loss=loss, optimizer=optimizer)
 
     model.summary()
 
@@ -270,7 +270,7 @@ class RNNMusicExperiment():
 
         
         model, callbacks = self.get_model()
-
+        print(f"type prepared_data is {type(prepared_data)}")
         # seq_length, _ = song_df.shape
         # buffer_size = n_notes - seq_length  # the number of items in the dataset
         buffer_size = 100

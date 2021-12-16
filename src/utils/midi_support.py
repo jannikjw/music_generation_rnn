@@ -55,20 +55,6 @@ class MidiSupport():
     def midi_to_16_beats_processed(self, midi_file):
         return self.prepare_song(midi_file)
 
-    def add_beat_location(self, input_arr_df):
-        input_arr_df["ind"] = range(len(input_arr_df))
-        input_arr_df["id"] = input_arr_df["ind"].apply(lambda x: x%16)
-
-        input_arr_df[['id_0','id_1', 'id_2', 'id_3']] = input_arr_df['id'].apply(lambda x: pd.Series(list(bin(x)[2:].zfill(4))))
-        input_arr_df = input_arr_df.drop(["ind", "id"], axis=1)
-        for col in ["id_0", "id_1", "id_2", "id_3"]:
-            input_arr_df[col] = input_arr_df[col].astype(float)
-        return input_arr_df
-
-    def song_to_beats(self, song_df, beats_expanded):
-        resampled = song_df.loc[beats_expanded]
-        return resampled.values
-
     def song_to_beat_articulation(self, song_df, beats_expanded):
         print("starting")
         
@@ -87,6 +73,135 @@ class MidiSupport():
         aa = (note_sub_df_np[0:1] > 0).astype(np.int32)
         note_changes = np.concatenate([aa.T, note_changes], axis=1)
         return note_changes
+
+    def add_beat_location(self, input_arr_df):
+        '''
+        Add four rows to a dataframe where each row is either the played or the articulation 
+        binary of a note and the columns are the timestepts
+        Inputs:
+            - arr_df: Dataframe. Shape of (2*n_notes, timesteps*n_notes)
+            - repeat_amount: TODO:Explain
+        '''
+        input_arr_df["ind"] = range(len(input_arr_df))
+        input_arr_df["id"] = input_arr_df["ind"].apply(lambda x: x%16)
+
+        input_arr_df[['id_0','id_1', 'id_2', 'id_3']] = input_arr_df['id'].apply(lambda x: pd.Series(list(bin(x)[2:].zfill(4))))
+        input_arr_df = input_arr_df.drop(["ind", "id"], axis=1)
+        for col in ["id_0", "id_1", "id_2", "id_3"]:
+            input_arr_df[col] = input_arr_df[col].astype(float)
+        return input_arr_df
+
+    def add_midi_value(arr, n_notes):
+        '''
+        Create a row of the note values by creating a range from the column indices % 12. 
+        Shift by 1 because the first column does not have previous vicinity and is omitted.
+        Inputs:
+            - arr: One-hot array of the notes and articulations previous vicinity of each timestep.  
+                  Shape of (2*n_notes, timesteps*n_notes)
+        Outputs:
+            - midi_row: Row of midi values for each of the columns
+        '''
+        midi_row = (np.arange(arr.shape[1]) + 1) % n_notes
+        return midi_row
+
+  def calculate_pitchclass(midi_row, arr):
+      '''
+      Create an array of 12 one-hot encoded pitchclasses. Will be 1 at the position 
+      of the current note, starting at A for 0 and increasing by 1 per half-step, 
+      and 0 for all the others.     Used to allow selection of more common chords 
+      (i.e. it's more common to have a C major chord than an E-flat major chord).
+      Inputs:
+          - arr: One-hot array of the notes and articulations previous vicinity of each timestep. 
+                Shape of (2*n_notes, timesteps*n_notes)
+      Outputs:
+          - pitchclasses: One-hot encoded array of the pitchclass of the current note.
+      '''
+      pitchclasses = np.array([[int(i == pitch % 12) for i in range(12)] for pitch in midi_row]).T
+      return pitchclasses
+    
+  def build_context(arr, midi_row, pitchclass_rows):
+      '''
+      Create an array of 12 one-hot encoded pitchclasses. Value at index i will be 
+      the number of times any note x where (x-i-pitchclass) mod 12 was played last 
+      timestep. Thus if current note is C and there were 2 E's last timestep, the 
+      value at index 4 (since E is 4 half steps above C) would be 2.
+      Inputs:
+          - arr: One-hot array of the notes and articulations previous vicinity of each timestep.  
+                Shape of (2*n_notes, timesteps*n_notes)
+      Outputs:
+          - pitchclasses: One-hot encoded array of the pitchclass of the current note.
+      '''
+      df = pd.DataFrame(arr)
+      df["index"] = df.index
+      df = df.loc[df["index"] % 2 == 0].reset_index(drop=True)
+      df["index"] = df.index
+      df["pitchclass"] = df["index"].apply(lambda x: x % 12)
+      df = df.groupby("pitchclass").sum()
+      df = df.drop(["index"], axis=1)
+      return np.array(df)
+
+    def song_to_beats(self, song_df, beats_expanded):
+        resampled = song_df.loc[beats_expanded]
+        return resampled.values
+
+    def prepare_song_time_invariant(self, midi_obj, vicinity=50):
+        '''
+        Convert a given array of one-hot encoded midi notes into an array with the 
+        following values (the number in brackets is the number of elements in the 
+        input vector that correspond to each part). 
+            - Position[1] - the MIDI note value
+            - Pitchclass[12]
+            - Previous vicinity[50]
+            - Previous context[12]
+            - Beat[4]
+        Inputs:
+            - midi_obj: One-hot array of the notes and articulations of each timestep. 
+                        Shape of (2*n_notes, timesteps)
+            - vicinity: Integer. Number of notes considered around specified note.
+        Outputs:
+            - X: Training data. Shape of (2*n_notes, timesteps*n_notes)
+            - y: Labels. For each note, this is a list of [played, articulated]
+            - elements_per_time_step:
+        '''
+        samp_f = 100
+        beats_together = [np.arange(x,y, (y-x)/4) for x, y in zip(midi_obj.get_beats(), midi_obj.get_beats()[1:])]
+        beats_expanded = [x for y in beats_together for x in y]
+        beats_expanded = np.around(beats_expanded, 2)
+
+        song_df = pd.DataFrame(midi_obj.get_piano_roll(fs=samp_f)).T
+        song_df["time"] = np.around([x*(1/samp_f) for x in range(len(song_df))], 2)
+        song_df.index = song_df["time"]
+        song_df = song_df.drop("time", axis=1)
+        note_articulated = self.song_to_beat_articulation(song_df, beats_expanded).T
+        notes_held = self.song_to_beats(song_df, beats_expanded)
+
+        min_length = min(notes_held.shape[0], note_articulated.shape[0])
+        note_articulated = note_articulated[0:min_length, :].astype(np.float32)
+        notes_held = notes_held[0:min_length, :]
+
+        play_articulated_concat = np.concatenate([notes_held.T, note_articulated.T], axis=1)
+        play_articulated = play_articulated_concat.flatten().reshape(-1, min_length)
+        
+        n_notes, timesteps = play_articulated.shape
+
+        # window across each note vicinity
+        X, y, elements_per_time_step = windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
+
+        # Get array of Midi values for each note value
+        midi_row = add_midi_value(X, n_notes)
+
+        # Get array of one hot encoded pitch values for each note value
+        pitchclass_rows = calculate_pitchclass(midi_row, X)
+
+        # Add total_pitch count repeated for each note window
+        previous_context = build_context(X, midi_row, pitchclass_rows)
+
+        X = np.vstack((midi_row, pitchclass_rows, X, previous_context))
+
+        # Add beats repeated for each note window
+        X = add_beat_location(pd.DataFrame(X.T), repeat_amount=elements_per_time_step).T
+        
+        return X, pd.DataFrame(y), elements_per_time_step
 
     def prepare_song(self, midi_obj):
         samp_f = 100

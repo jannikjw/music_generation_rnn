@@ -82,14 +82,26 @@ class MidiSupport():
             - arr_df: Dataframe. Shape of (2*n_notes, timesteps*n_notes)
             - repeat_amount: TODO:Explain
         '''
-        input_arr_df["ind"] = range(len(input_arr_df))
-        input_arr_df["id"] = input_arr_df["ind"].apply(lambda x: x%16)
+        beats_per_bar = 16
+        num_notes = 128
+        # num_notes = 4
+        total_len, _ = input_arr_df.shape
 
-        input_arr_df[['id_0','id_1', 'id_2', 'id_3']] = input_arr_df['id'].apply(lambda x: pd.Series(list(bin(x)[2:].zfill(4))))
-        input_arr_df = input_arr_df.drop(["ind", "id"], axis=1)
-        for col in ["id_0", "id_1", "id_2", "id_3"]:
-            input_arr_df[col] = input_arr_df[col].astype(float)
-        return input_arr_df
+        num_beats = total_len//num_notes
+
+        # Add an extra beat then trim it to be same shape as input later
+        num_bars = num_beats//16 + 1
+
+        bin_pattern_tst = np.array([bin(x)[2:].zfill(4) for x in np.arange(0, beats_per_bar)])
+        repeated_str = np.repeat(bin_pattern_tst, num_notes, axis=0)
+        repeated_str = np.tile(repeated_str, num_bars)
+        all_beats = np.array([list(x) for x in repeated_str], dtype=np.int32)
+
+        all_beats = all_beats[:total_len, :]
+
+        all_beats = pd.DataFrame(all_beats)
+        ret = pd.concat([input_arr_df, all_beats], axis=1)
+        return ret
 
     def add_midi_value(arr, n_notes):
         '''

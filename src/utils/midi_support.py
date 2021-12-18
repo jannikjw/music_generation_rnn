@@ -15,40 +15,6 @@ class MidiSupport():
     def __init__(self):
         pass
 
-    def play_midi_file(self, file_path):
-
-        
-        def play_music(midi_filename):
-            '''Stream music_file in a blocking manner'''
-            clock = pygame.time.Clock()
-            pygame.mixer.music.load(midi_filename)
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy():
-                clock.tick(30) # check if playback has finished
-            
-        midi_filename = file_path
-
-        # mixer config
-        freq = 44100  # audio CD quality
-        bitsize = -16   # unsigned 16 bit
-        channels = 1  # 1 is mono, 2 is stereo
-        buffer = 1024   # number of samples
-        pygame.mixer.init(freq, bitsize, channels, buffer)
-
-        # optional volume 0 to 1.0
-        pygame.mixer.music.set_volume(0.8)
-
-        # listen for interruptions
-        try:
-            # use the midi file you just saved
-            play_music(midi_filename)
-        except KeyboardInterrupt:
-            # if user hits Ctrl/C then exit
-            # (works only in console mode)
-            pygame.mixer.music.fadeout(1000)
-            pygame.mixer.music.stop()
-            raise SystemExit
-
     def load_midi_file(self, file_path):
         return pretty_midi.PrettyMIDI(file_path)
 
@@ -156,6 +122,110 @@ class MidiSupport():
         resampled = song_df.loc[beats_expanded]
         return resampled.values
 
+    def windowed_data_across_notes_time(self, in_data, mask_length_x=6, return_labels=True):
+        length, num_in_time = in_data.shape
+
+        pad_val = mask_length_x//2
+
+        num_notes = length
+        stride_length_x = 2
+
+        elements_per_time_step = ((num_notes + 2*pad_val) - mask_length_x)//stride_length_x
+
+        padded = np.pad(in_data, pad_val)[:, pad_val:pad_val+num_in_time]
+
+        # padval_offset = pad_val * num_in_time
+
+        row_offset = 1 * num_in_time
+        # print(f"row_offset is {row_offset}")
+
+        stride = stride_length_x
+        mask_width = mask_length_x
+
+        row_width = num_in_time
+        horizontal_indexing_inner = num_in_time * stride * np.arange(elements_per_time_step)[None, :]
+        horizontal_indexing_increment = np.repeat(np.arange(num_in_time), elements_per_time_step, axis=0).flatten()
+        horizontal_indexing = np.repeat(horizontal_indexing_inner, num_in_time, axis=0).flatten() + horizontal_indexing_increment
+        vertical_indexing = row_offset + row_width * np.arange(mask_width)[:, None]
+        indexer = horizontal_indexing + vertical_indexing
+        indexer = indexer.astype(np.int)
+        X = padded.flatten()[indexer]
+
+
+        if mask_length_x % 2 != 0:
+            half_mask_offset = (mask_length_x//2 + 1 )*num_in_time
+        else:
+            half_mask_offset = (mask_length_x//2 )*num_in_time
+
+
+        mask_width = 2
+        row_width = num_in_time
+        horizontal_indexing_inner = num_in_time * stride * np.arange(elements_per_time_step)[None, :]
+        horizontal_indexing_increment = np.repeat(np.arange(num_in_time), elements_per_time_step, axis=0).flatten()
+        horizontal_indexing = np.repeat(horizontal_indexing_inner, num_in_time, axis=0).flatten() + horizontal_indexing_increment
+        vertical_indexing = half_mask_offset + row_width * np.arange(mask_width)[:, None]
+        label_indexer = horizontal_indexing + vertical_indexing
+
+        y = padded.flatten()[label_indexer].astype(np.int32)
+
+        if return_labels:
+            X = X[:, 0:-(elements_per_time_step)]
+            y = y[: ,elements_per_time_step:]
+            return X, y, elements_per_time_step
+        else:
+            return X, None, elements_per_time_step
+
+    def midi_obj_to_play_articulate(self, midi_obj, vicinity=50):
+
+        samp_f = 100
+        beats_together = [np.arange(x,y, (y-x)/4) for x, y in zip(midi_obj.get_beats(), midi_obj.get_beats()[1:])]
+        beats_expanded = [x for y in beats_together for x in y]
+        beats_expanded = np.around(beats_expanded, 2)
+
+        song_df = pd.DataFrame(midi_obj.get_piano_roll(fs=samp_f)).T
+        song_df["time"] = np.around([x*(1/samp_f) for x in range(len(song_df))], 2)
+        song_df.index = song_df["time"]
+        song_df = song_df.drop("time", axis=1)
+        note_articulated = self.song_to_beat_articulation(song_df, beats_expanded).T
+        notes_held = self.song_to_beats(song_df, beats_expanded)
+
+        min_length = min(notes_held.shape[0], note_articulated.shape[0])
+        note_articulated = note_articulated[0:min_length, :].astype(np.float32)
+        notes_held = notes_held[0:min_length, :]
+
+        play_articulated_concat = np.concatenate([notes_held.T, note_articulated.T], axis=1)
+        play_articulated = play_articulated_concat.flatten().reshape(-1, min_length)
+        return play_articulated
+
+    def transform_beats_to_batch(self, X, y, elements_per_time_step):
+        """Transform beat groups to new dimension
+
+        Takes elements_per_time_step columns then moves the 2d portion into a new dimension
+
+        Args:
+            X (np.array): X coming from windowed_data_across_notes_time with additional information added
+            y (np.array): 
+            elements_per_time_step ([type]): [description]
+
+        Returns:
+            X: X 3d shape now
+            u: y 3D shape
+        """
+        num_groups = X.shape[1]//elements_per_time_step
+        X = np.dstack(np.split(X, num_groups, axis=1))
+        y = np.dstack(np.split(y, num_groups, axis=1))
+
+        # Initially, the 0 dimension indexes to different input per note for a given time. For example taking the last four elements gives beat info -5:-1
+        # Initially, the 1 dimension indexes to different notes.
+        # Initially, the 2 dimension indexes to different beats.
+        X = np.swapaxes(X, 0, 2)
+        y = np.swapaxes(y, 0, 2)
+        # After swapping axes the 0 dimension indexes to different beats.
+        # After swapping axes the 1 dimension indexes to different notes.
+        # After swapping axes the 2 dimension indexes to different input per note for a given time. For example taking the last four elements gives beat info -5:-1
+
+        return X, y
+
     def prepare_song_time_invariant(self, midi_obj, vicinity=50):
         '''
         Convert a given array of one-hot encoded midi notes into an array with the 
@@ -175,45 +245,50 @@ class MidiSupport():
             - y: Labels. For each note, this is a list of [played, articulated]
             - elements_per_time_step:
         '''
-        samp_f = 100
-        beats_together = [np.arange(x,y, (y-x)/4) for x, y in zip(midi_obj.get_beats(), midi_obj.get_beats()[1:])]
-        beats_expanded = [x for y in beats_together for x in y]
-        beats_expanded = np.around(beats_expanded, 2)
-
-        song_df = pd.DataFrame(midi_obj.get_piano_roll(fs=samp_f)).T
-        song_df["time"] = np.around([x*(1/samp_f) for x in range(len(song_df))], 2)
-        song_df.index = song_df["time"]
-        song_df = song_df.drop("time", axis=1)
-        note_articulated = self.song_to_beat_articulation(song_df, beats_expanded).T
-        notes_held = self.song_to_beats(song_df, beats_expanded)
-
-        min_length = min(notes_held.shape[0], note_articulated.shape[0])
-        note_articulated = note_articulated[0:min_length, :].astype(np.float32)
-        notes_held = notes_held[0:min_length, :]
-
-        play_articulated_concat = np.concatenate([notes_held.T, note_articulated.T], axis=1)
-        play_articulated = play_articulated_concat.flatten().reshape(-1, min_length)
+        play_articulated = self.midi_obj_to_play_articulate(midi_obj=midi_obj, vicinity=vicinity)
         
         n_notes, timesteps = play_articulated.shape
 
         # window across each note vicinity
-        X, y, elements_per_time_step = windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
+        X, y, elements_per_time_step = self.windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
 
         # Get array of Midi values for each note value
-        midi_row = add_midi_value(X, n_notes)
+        midi_row = self.add_midi_value(X, n_notes)
 
         # Get array of one hot encoded pitch values for each note value
-        pitchclass_rows = calculate_pitchclass(midi_row, X)
+        pitchclass_rows = self.calculate_pitchclass(midi_row, X)
 
         # Add total_pitch count repeated for each note window
-        previous_context = build_context(X, midi_row, pitchclass_rows)
+        previous_context = self.build_context(X, midi_row, pitchclass_rows)
 
         X = np.vstack((midi_row, pitchclass_rows, X, previous_context))
 
         # Add beats repeated for each note window
-        X = add_beat_location(pd.DataFrame(X.T), repeat_amount=elements_per_time_step).T
+        X = self.add_beat_location(pd.DataFrame(X.T), repeat_amount=elements_per_time_step).T
         
         return X, pd.DataFrame(y), elements_per_time_step
+
+    def prepare_song_note_invariant_plus_beats(self, midi_obj, vicinity=50):
+        '''
+        Convert a given array of one-hot encoded midi notes into an array with the 
+        following values (the number in brackets is the number of elements in the 
+        input vector that correspond to each part). 
+            - Previous vicinity[50]
+            - Beat[4]
+        Inputs:
+            - midi_obj: One-hot array of the notes and articulations of each timestep. 
+                        Shape of (2*n_notes, timesteps)
+            - vicinity: Integer. Number of notes considered around specified note.
+        Outputs:
+            - X: Training data. Shape of (2*n_notes, timesteps*n_notes)
+            - y: Labels. For each note, this is a list of [played, articulated]
+            - elements_per_time_step:
+        '''
+        play_articulated = self.midi_obj_to_play_articulate(midi_obj=midi_obj, vicinity=vicinity)
+        X, y, elements_per_time_step = self.windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
+        X = self.add_beat_location(pd.DataFrame(X.T), repeat_amount=elements_per_time_step).T
+        X, y = self.transform_beats_to_batch(X, y)
+        return X, y
 
     def prepare_song(self, midi_obj):
         samp_f = 100

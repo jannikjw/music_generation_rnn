@@ -175,7 +175,7 @@ class MidiSupport():
         else:
             return X, None, elements_per_time_step
 
-    def midi_obj_to_play_articulate(self, midi_obj, vicinity=50):
+    def midi_obj_to_play_articulate(self, midi_obj):
 
         samp_f = 100
         beats_together = [np.arange(x,y, (y-x)/4) for x, y in zip(midi_obj.get_beats(), midi_obj.get_beats()[1:])]
@@ -288,7 +288,7 @@ class MidiSupport():
             - y: Labels. For each note, this is a list of [played, articulated]
             - elements_per_time_step:
         '''
-        play_articulated = self.all_midi_obj_to_play_articulate(midi_obj=all_midi_objs)
+        play_articulated = self.all_midi_obj_to_play_articulate(all_midi_objs)
         X, y, elements_per_time_step = self.windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
         X = self.add_beat_location(pd.DataFrame(X.T), repeat_amount=elements_per_time_step).T
         X, y = self.transform_beats_to_batch(X, y)

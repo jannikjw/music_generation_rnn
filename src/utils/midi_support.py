@@ -290,7 +290,7 @@ class MidiSupport():
         '''
         play_articulated = self.all_midi_obj_to_play_articulate(all_midi_objs)
         X, y, elements_per_time_step = self.windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
-        X = self.add_beat_location(pd.DataFrame(X.T), repeat_amount=elements_per_time_step).T
+        X = self.add_beat_location(pd.DataFrame(X.T)).T
         X, y = self.transform_beats_to_batch(X, y)
         return X, y
 

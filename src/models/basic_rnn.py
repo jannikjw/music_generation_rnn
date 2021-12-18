@@ -454,6 +454,22 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
         print(self.predict_data(model, prepared_data))
         # Save music file?
         # Save music output plot?
+
+    def train_model(self, prepared_data):
+        """Train model overwrite
+
+        Args:
+            prepared_data (tuple): X, y
+
+        """
+        
+        model, callbacks = self.get_model()
+        history = model.fit(prepared_data[0],
+            prepared_data[1],
+            epochs=self.common_config["epochs"],
+            callbacks=callbacks,
+        )
+        return model, history
     
     def load_data(self):
         return self.basic_load_data()

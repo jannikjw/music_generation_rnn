@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_music
+from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_midi_objs
 
 
 def get_fat_diagonal_mat(mat_len, one_dis):
@@ -332,8 +332,8 @@ class RNNMusicExperiment():
 
     def run(self):
 
-        loaded_data = self.load_data()
-        prepared_data = self.prepare_data(loaded_data)
+        loaded_midi = self.load_data()
+        prepared_data = self.prepare_data(loaded_midi)
         model, history = self.train_model(prepared_data)
         # Save training stats?
         # Pickle the model?
@@ -344,7 +344,7 @@ class RNNMusicExperiment():
         # Save music output plot?
 
     def basic_load_data(self):
-        loaded = load_music(
+        loaded = load_midi_objs(
             num_files=self.common_config["num_music_files"],
             seq_length=self.common_config["seq_length"]
             )
@@ -390,8 +390,9 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
     def load_data(self):
         return self.basic_load_data()
 
-    def prepare_data(self, loaded_data):
-        seq_ds = RNNMusicDataSetPreparer().prepare(loaded_data)
+    def prepare_data(self, midi_objs):
+        play_articulated = RNNMusicDataSetPreparer().all_midi_obj_to_play_articulate(midi_objs)
+        seq_ds = RNNMusicDataSetPreparer().prepare(play_articulated)
         # TODO: Some models return a DataSet and some return X_train, y_train
         return seq_ds
 
@@ -443,8 +444,8 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
 
     def run(self):
 
-        loaded_data = self.load_data()
-        prepared_data = self.prepare_data(loaded_data)
+        loaded_midi = self.load_data()
+        prepared_data = self.prepare_data(loaded_midi)
         model, history = self.train_model(prepared_data)
         # Save training stats?
         # Pickle the model?

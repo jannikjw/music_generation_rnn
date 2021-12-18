@@ -197,6 +197,10 @@ class MidiSupport():
         play_articulated = play_articulated_concat.flatten().reshape(-1, min_length)
         return play_articulated
 
+    def all_midi_obj_to_play_articulate(self, midi_obj_list):
+        loaded_data = pd.concat([self.midi_obj_to_play_articulate(m) for m in midi_obj_list])
+        return loaded_data
+
     def transform_beats_to_batch(self, X, y, elements_per_time_step):
         """Transform beat groups to new dimension
 
@@ -268,7 +272,7 @@ class MidiSupport():
         
         return X, pd.DataFrame(y), elements_per_time_step
 
-    def prepare_song_note_invariant_plus_beats(self, midi_obj, vicinity=50):
+    def prepare_song_note_invariant_plus_beats(self, all_midi_objs, vicinity=50):
         '''
         Convert a given array of one-hot encoded midi notes into an array with the 
         following values (the number in brackets is the number of elements in the 
@@ -276,7 +280,7 @@ class MidiSupport():
             - Previous vicinity[50]
             - Beat[4]
         Inputs:
-            - midi_obj: One-hot array of the notes and articulations of each timestep. 
+            - songs_df: One-hot array of the notes and articulations of each timestep. 
                         Shape of (2*n_notes, timesteps)
             - vicinity: Integer. Number of notes considered around specified note.
         Outputs:
@@ -284,7 +288,7 @@ class MidiSupport():
             - y: Labels. For each note, this is a list of [played, articulated]
             - elements_per_time_step:
         '''
-        play_articulated = self.midi_obj_to_play_articulate(midi_obj=midi_obj, vicinity=vicinity)
+        play_articulated = self.all_midi_obj_to_play_articulate(midi_obj=all_midi_objs)
         X, y, elements_per_time_step = self.windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
         X = self.add_beat_location(pd.DataFrame(X.T), repeat_amount=elements_per_time_step).T
         X, y = self.transform_beats_to_batch(X, y)
@@ -312,8 +316,7 @@ class MidiSupport():
         play_articulated_concat = np.concatenate([notes_held.T, note_articulated.T], axis=1)
         play_articulated = play_articulated_concat.flatten().reshape(-1, min_length)
         
-        
-        return self.add_beat_location(pd.DataFrame(play_articulated).T)
+        return play_articulated
 
 
     def piano_roll_to_pretty_midi(piano_roll, fs=100, program=0):
@@ -426,7 +429,7 @@ def download_and_save_data():
             cache_dir='.', cache_subdir='data',
         )
 
-def load_music(data_dir="", num_files=15, seq_length=15):
+def load_midi_objs(data_dir="", num_files=15, seq_length=15):
 
     download_and_save_data()
 
@@ -438,15 +441,13 @@ def load_music(data_dir="", num_files=15, seq_length=15):
     ms = MidiSupport()
 
     num_files = num_files
-    song_dfs = []
-    for f in filenames[100:100+num_files]:
+    midi_objs = []
+    for f in filenames:
         mf_i = ms.load_midi_file(f)
         
-        song_dfs.append(ms.prepare_song(mf_i))
+        midi_objs.append(mf_i)
 
-    all_song_dfs = pd.concat(song_dfs)
-    all_song_dfs = (all_song_dfs > 0) * 1
-    return all_song_dfs
+    return midi_objs
 
 if __name__ == "__main__":
 

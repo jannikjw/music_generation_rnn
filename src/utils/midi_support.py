@@ -104,41 +104,41 @@ class MidiSupport():
         midi_row = (np.arange(arr.shape[1]) + 1) % n_notes
         return midi_row
 
-  def calculate_pitchclass(midi_row, arr):
-      '''
-      Create an array of 12 one-hot encoded pitchclasses. Will be 1 at the position 
-      of the current note, starting at A for 0 and increasing by 1 per half-step, 
-      and 0 for all the others.     Used to allow selection of more common chords 
-      (i.e. it's more common to have a C major chord than an E-flat major chord).
-      Inputs:
-          - arr: One-hot array of the notes and articulations previous vicinity of each timestep. 
+    def calculate_pitchclass(midi_row, arr):
+        '''
+        Create an array of 12 one-hot encoded pitchclasses. Will be 1 at the position 
+        of the current note, starting at A for 0 and increasing by 1 per half-step, 
+        and 0 for all the others.     Used to allow selection of more common chords 
+        (i.e. it's more common to have a C major chord than an E-flat major chord).
+        Inputs:
+            - arr: One-hot array of the notes and articulations previous vicinity of each timestep. 
                 Shape of (2*n_notes, timesteps*n_notes)
-      Outputs:
-          - pitchclasses: One-hot encoded array of the pitchclass of the current note.
-      '''
-      pitchclasses = np.array([[int(i == pitch % 12) for i in range(12)] for pitch in midi_row]).T
-      return pitchclasses
+        Outputs:
+            - pitchclasses: One-hot encoded array of the pitchclass of the current note.
+        '''
+        pitchclasses = np.array([[int(i == pitch % 12) for i in range(12)] for pitch in midi_row]).T
+        return pitchclasses
     
-  def build_context(arr, midi_row, pitchclass_rows):
-      '''
-      Create an array of 12 one-hot encoded pitchclasses. Value at index i will be 
-      the number of times any note x where (x-i-pitchclass) mod 12 was played last 
-      timestep. Thus if current note is C and there were 2 E's last timestep, the 
-      value at index 4 (since E is 4 half steps above C) would be 2.
-      Inputs:
-          - arr: One-hot array of the notes and articulations previous vicinity of each timestep.  
+    def build_context(arr, midi_row, pitchclass_rows):
+        '''
+        Create an array of 12 one-hot encoded pitchclasses. Value at index i will be 
+        the number of times any note x where (x-i-pitchclass) mod 12 was played last 
+        timestep. Thus if current note is C and there were 2 E's last timestep, the 
+        value at index 4 (since E is 4 half steps above C) would be 2.
+        Inputs:
+            - arr: One-hot array of the notes and articulations previous vicinity of each timestep.  
                 Shape of (2*n_notes, timesteps*n_notes)
-      Outputs:
-          - pitchclasses: One-hot encoded array of the pitchclass of the current note.
-      '''
-      df = pd.DataFrame(arr)
-      df["index"] = df.index
-      df = df.loc[df["index"] % 2 == 0].reset_index(drop=True)
-      df["index"] = df.index
-      df["pitchclass"] = df["index"].apply(lambda x: x % 12)
-      df = df.groupby("pitchclass").sum()
-      df = df.drop(["index"], axis=1)
-      return np.array(df)
+        Outputs:
+            - pitchclasses: One-hot encoded array of the pitchclass of the current note.
+        '''
+        df = pd.DataFrame(arr)
+        df["index"] = df.index
+        df = df.loc[df["index"] % 2 == 0].reset_index(drop=True)
+        df["index"] = df.index
+        df["pitchclass"] = df["index"].apply(lambda x: x % 12)
+        df = df.groupby("pitchclass").sum()
+        df = df.drop(["index"], axis=1)
+        return np.array(df)
 
     def song_to_beats(self, song_df, beats_expanded):
         resampled = song_df.loc[beats_expanded]

@@ -679,7 +679,7 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
     def predict_data(self, model, prepared_data):
         return predict_notes_note_invariant_plus_extras(model, prepared_data[0], size=100)
 
-class RNNMusicExperimentFive(RNNMusicExperiment):
+class RNNMusicExperimentFive(RNNMusicExperimentFour):
     """Note invariance with articularion and beats and extras
 
 

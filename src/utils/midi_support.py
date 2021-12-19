@@ -313,7 +313,7 @@ class MidiSupport():
         
         return play_articulated
 
-    def piano_roll_to_pretty_midi(piano_roll, fs=100, program=0):
+    def piano_roll_to_pretty_midi(self, piano_roll, fs=100, program=0):
         '''Convert a Piano Roll array into a PrettyMidi object
         with a single instrument.
         Parameters

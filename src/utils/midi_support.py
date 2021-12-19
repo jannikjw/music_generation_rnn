@@ -302,6 +302,9 @@ class MidiSupport():
         beats_expanded = [x for y in beats_together for x in y]
         beats_expanded = np.around(beats_expanded, 2)
 
+        # Forcing to only first instrument
+        midi_obj.instruments = midi_obj.instruments[:1]
+
         song_df = pd.DataFrame(midi_obj.get_piano_roll(fs=samp_f)).T
         song_df["time"] = np.around([x*(1/samp_f) for x in range(len(song_df))], 2)
         song_df.index = song_df["time"]

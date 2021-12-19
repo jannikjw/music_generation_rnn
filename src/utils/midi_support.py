@@ -232,48 +232,6 @@ class MidiSupport():
 
         return X, y
 
-    def prepare_song_time_invariant(self, midi_obj, vicinity=50):
-        '''
-        Convert a given array of one-hot encoded midi notes into an array with the 
-        following values (the number in brackets is the number of elements in the 
-        input vector that correspond to each part). 
-            - Position[1] - the MIDI note value
-            - Pitchclass[12]
-            - Previous vicinity[50]
-            - Previous context[12]
-            - Beat[4]
-        Inputs:
-            - midi_obj: One-hot array of the notes and articulations of each timestep. 
-                        Shape of (2*n_notes, timesteps)
-            - vicinity: Integer. Number of notes considered around specified note.
-        Outputs:
-            - X: Training data. Shape of (2*n_notes, timesteps*n_notes)
-            - y: Labels. For each note, this is a list of [played, articulated]
-            - elements_per_time_step:
-        '''
-        play_articulated = self.midi_obj_to_play_articulate(midi_obj=midi_obj, vicinity=vicinity)
-        
-        n_notes, timesteps = play_articulated.shape
-
-        # window across each note vicinity
-        X, y, elements_per_time_step = self.windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
-
-        # Get array of Midi values for each note value
-        midi_row = self.add_midi_value(X, n_notes)
-
-        # Get array of one hot encoded pitch values for each note value
-        pitchclass_rows = self.calculate_pitchclass(midi_row, X)
-
-        # Add total_pitch count repeated for each note window
-        previous_context = self.build_context(X, midi_row, pitchclass_rows)
-
-        X = np.vstack((midi_row, pitchclass_rows, X, previous_context))
-
-        # Add beats repeated for each note window
-        X = self.add_beat_location(pd.DataFrame(X.T), repeat_amount=elements_per_time_step).T
-        
-        return X, pd.DataFrame(y), elements_per_time_step
-
     def prepare_song_note_invariant_plus_beats(self, all_midi_objs, vicinity=24):
         '''
         Convert a given array of one-hot encoded midi notes into an array with the 
@@ -292,6 +250,37 @@ class MidiSupport():
         '''
         play_articulated = self.all_midi_obj_to_play_articulate(all_midi_objs)
         X, y, elements_per_time_step = self.windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
+        X = self.add_beat_location(pd.DataFrame(X.T)).T
+        X, y = self.transform_beats_to_batch(X, y, elements_per_time_step)
+        return X, y
+
+    def prepare_song_note_invariant_plus_beats_and_more(self, all_midi_objs, vicinity=24):
+        '''
+        Convert a given array of one-hot encoded midi notes into an array with the 
+        following values (the number in brackets is the number of elements in the 
+        input vector that correspond to each part). 
+            - Previous vicinity[50]
+            - Beat[4]
+        Inputs:
+            - songs_df: One-hot array of the notes and articulations of each timestep. 
+                        Shape of (2*n_notes, timesteps)
+            - vicinity: Integer. Number of notes considered around specified note.
+        Outputs:
+            - X: Training data. Shape of (2*n_notes, timesteps*n_notes)
+            - y: Labels. For each note, this is a list of [played, articulated]
+            - elements_per_time_step:
+        '''
+        play_articulated = self.all_midi_obj_to_play_articulate(all_midi_objs)
+        X, y, elements_per_time_step = self.windowed_data_across_notes_time(play_articulated, mask_length_x=vicinity)
+        # Get array of Midi values for each note value
+        n_notes = 128
+        midi_row = self.add_midi_value(X, n_notes)
+        # Get array of one hot encoded pitch values for each note value
+        pitchclass_rows = self.calculate_pitchclass(midi_row, X)
+        # Add total_pitch count repeated for each note window
+        previous_context = self.build_context(X, midi_row, pitchclass_rows)
+        midi_row = midi_row.reshape((1, -1))
+        X = np.vstack((X, midi_row, pitchclass_rows, previous_context))
         X = self.add_beat_location(pd.DataFrame(X.T)).T
         X, y = self.transform_beats_to_batch(X, y, elements_per_time_step)
         return X, y
@@ -322,7 +311,6 @@ class MidiSupport():
         play_articulated = play_articulated_concat.flatten().reshape(-1, min_length)
         
         return play_articulated
-
 
     def piano_roll_to_pretty_midi(piano_roll, fs=100, program=0):
         '''Convert a Piano Roll array into a PrettyMidi object

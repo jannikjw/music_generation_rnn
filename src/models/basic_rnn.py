@@ -172,7 +172,6 @@ def model_5_lstm_layer_with_artic(seq_length=15, learning_rate = 0.0005):
     ]
     return model,  callbacks
 
-
 def model_6_note_invariant(learning_rate=0.01):
 
     total_vicinity = 28
@@ -316,6 +315,112 @@ def predict_notes_note_invariant(model, reshaped_train_data, size=10):
         last_new_note = last_new_note[np.newaxis, :, :] # Shape now  (1, 28, 128)
         last_new_note = np.swapaxes(last_new_note, 1, 2) # Shape now  (1, 128, 28)
         input_notes_reshape = last_new_note
+
+    outputs_joined = pd.DataFrame(outputs)
+    all_probs_joined = pd.DataFrame(all_probs)
+    return outputs_joined, all_probs_joined
+
+def predict_notes_note_invariant_plus_extras(model, reshaped_train_data, size=10):
+    """Predict notes
+
+    Expects model predictioin to be sigmoid output 0 or 1
+    Expects model that predict sequence of 128 at a time which amount to "the next note"
+    Plays notes if probability is greater than 0.5
+
+    Args:
+        reshaped_train_data: Needs to already be X_prepared unreavelled form
+        model (tf.keras.model): The model
+            Expects the model to give output in dictionary that has "pitch"
+        size (int): Number of notes to predict Defaults to 10.
+        training data pd.DataFrame: Training data to pull random data from for start of prediction
+
+    Returns:
+        pd.DataFrame: The predicted notes as shape (128 x size)
+    """
+    outputs = []
+    all_probs = []
+    num_notes = 128
+    elements_per_time_step = 128
+    num_beats = 1
+    offset = np.random.choice(range(len(reshaped_train_data)))
+    input_notes = reshaped_train_data[offset:offset+num_beats, :, :]
+    # input_notes_reshape = input_notes.reshape(1, num_notes, total_vicinity)
+    input_notes_reshape = input_notes
+    last_beats =[str(x) for x in input_notes_reshape[0, -1, -4:]]
+    last_beats_int = int("".join(last_beats), 2)
+
+    last_beats_int = 0
+
+    first_input = input_notes_reshape
+    for l in range(size):
+
+        # probs = model.predict(input_notes_reshape)["pitch"].flatten()
+        #*******
+        # model.reset_states()
+        probs = model.predict(input_notes_reshape)
+
+        # Think I need to flip this
+        # probs = np.flip(probs, axis=1)
+
+        # probs shape should be something like (256, beats)
+        probs = pd.DataFrame(probs.reshape(num_beats, elements_per_time_step*2, order="C").T) 
+
+        # probs = probs[:, -1]
+        # output sequence will be the same length as the input. Try to either take the first or the last beat
+
+      
+        play_bias = 0
+        probs = probs + play_bias
+        probs[probs > 1] = 1
+        probs[probs < 0] = 0
+        out = np.zeros_like(probs)
+        # out[tst_output_reshaped > 0.5 ] = 1
+
+        # This part fails when we have multiple output.
+        out = np.random.binomial(1, probs, size=None).reshape(num_notes*2)
+
+        # Need to window across out to get the input form again.
+        out = out.reshape((256,1))
+        probs = probs.values.reshape((256,))
+
+        outputs.append(out.reshape(256,))
+        all_probs.append(probs)
+
+        # this_vicin = total_vicinity-4-12-12-1
+        this_vicin = 24
+        next_pred, _, _ = MidiSupport().windowed_data_across_notes_time(out, mask_length_x=this_vicin, return_labels=False)# Return (total_vicinity, 128)
+
+        # Get array of Midi values for each note value
+        n_notes = 128
+        midi_row = MidiSupport().add_midi_value(next_pred, n_notes)
+
+        # Get array of one hot encoded pitch values for each note value
+        pitchclass_rows = MidiSupport().calculate_pitchclass(midi_row, next_pred)
+
+        # Add total_pitch count repeated for each note window
+        previous_context = MidiSupport().build_context(next_pred, midi_row, pitchclass_rows)
+
+        midi_row = midi_row.reshape((1, -1))
+        next_pred = np.vstack((next_pred, midi_row, pitchclass_rows, previous_context))
+        
+
+        # pdb.set_trace()
+        print(probs.T.tolist())
+        last_beats_int += 1
+        last_beats_int = last_beats_int%16
+        next_beats_ind = np.array([int(x) for x in bin(last_beats_int)[2:].zfill(4)])
+        next_beats_ind = next_beats_ind.reshape((4, 1))
+        next_beats_ind = np.repeat(next_beats_ind, num_notes, axis=1)
+
+
+
+        # TODO, check if beat is correctly increasing: might need to flip it before adding
+        last_new_note = np.concatenate([next_pred, next_beats_ind])
+        last_new_note = last_new_note[np.newaxis, :, :] # Shape now  (1, 28, 128)
+        last_new_note = np.swapaxes(last_new_note, 1, 2) # Shape now  (1, 128, 28)
+        input_notes_reshape = last_new_note
+
+        
 
     outputs_joined = pd.DataFrame(outputs)
     all_probs_joined = pd.DataFrame(all_probs)
@@ -524,6 +629,70 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
         return predict_notes_note_invariant(model, prepared_data[0])
 
 
+class RNNMusicExperimentFour(RNNMusicExperiment):
+    """Note invariance with articularion and beats and extras
+
+    Args:
+        RNNMusicExperiment ([type]): [description]
+    """
+
+    def get_name(self):
+        return "RNNMusicExperimentThreee"
+
+    def run(self):
+
+        loaded_midi = self.load_data()
+        prepared_data = self.prepare_data(loaded_midi)
+        model, history = self.train_model(prepared_data)
+        # Save training stats?
+        # Pickle the model?
+
+        print("Trying to predict some data")
+        predicted, probs = self.predict_data(model, prepared_data)
+        print("Trying to save some data")
+        self.plot_and_save_predicted_data(predicted, "predicted_")
+        self.plot_and_save_predicted_data(probs, "predicted_")
+        # Save music file?
+        # Save music output plot?
+
+    def train_model(self, prepared_data):
+        """Train model overwrite
+
+        Args:
+            prepared_data (tuple): X, y
+
+        """
+        
+        model, callbacks = self.get_model()
+        history = model.fit(prepared_data[0],
+            prepared_data[1],
+            epochs=self.common_config["epochs"],
+            callbacks=callbacks,
+            batch_size=1,
+        )
+        return model, history
+    
+    def load_data(self):
+        return self.basic_load_data()
+
+    def prepare_data(self, loaded_data):
+        #seq_ds is in form X, y here
+        seq_ds = MidiSupport().prepare_song_note_invariant_plus_beats_and_more(loaded_data)
+        # TODO: Some models return a DataSet and some return X_train, y_train
+        return seq_ds
+
+    def get_model(self):
+        print(f"in get_model self is {self}")
+        model, callbacks = model_6_note_invariant(
+            learning_rate=self.common_config["learning_rate"]
+        )
+        return model, callbacks
+        
+    def predict_data(self, model, prepared_data):
+        return predict_notes_note_invariant_plus_extras(model, prepared_data[0])
+
+
+
 # Main training loop
 if __name__ == "__main__":
     
@@ -545,8 +714,16 @@ if __name__ == "__main__":
         #     epochs=training_epoch)
         # exp.run()
 
-        print("Trying Exp 3")
-        exp = RNNMusicExperimentThreee(
+        # print("Trying Exp 3")
+        # exp = RNNMusicExperimentThreee(
+        #     learning_rate=0.01,
+        #     epochs=1,
+        #     batch_size=1,
+        #     num_music_files=1)
+        # exp.run()
+
+        print("Trying Exp 4")
+        exp = RNNMusicExperimentFour(
             learning_rate=0.01,
             epochs=1,
             batch_size=1,

@@ -468,6 +468,7 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
             prepared_data[1],
             epochs=self.common_config["epochs"],
             callbacks=callbacks,
+            batch_size=1,
         )
         return model, history
     
@@ -488,7 +489,7 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
         return model, callbacks
         
     def predict_data(self, model, prepared_data):
-        return predict_notes_note_invariant(model=model, train_data=prepared_data)
+        return predict_notes_note_invariant(model, prepared_data)
 
 
 # Main training loop

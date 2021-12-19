@@ -298,12 +298,11 @@ def predict_notes_note_invariant(model, reshaped_train_data, size=10):
         outputs.append(out.reshape(256,))
         all_probs.append(probs)
 
-        next_pred, _, _ = windowed_data_across_notes_time(out, mask_length_x=24, return_labels=False)# Return (24, 128)
+        next_pred, _, _ = MidiSupport().windowed_data_across_notes_time(out, mask_length_x=24, return_labels=False)# Return (24, 128)
 
         #*******
 
         # pdb.set_trace()
-        print(probs.T.tolist())
         last_beats_int += 1
         last_beats_int = last_beats_int%16
         next_beats_ind = np.array([int(x) for x in bin(last_beats_int)[2:].zfill(4)])

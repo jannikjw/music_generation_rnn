@@ -309,10 +309,13 @@ def predict_notes_note_invariant(model, reshaped_train_data, size=10):
         next_beats_ind = next_beats_ind.reshape((4, 1))
         next_beats_ind = np.repeat(next_beats_ind, num_notes, axis=1)
 
-        last_new_note = np.concatenate([next_pred, next_beats_ind]).reshape(1, 128, 28)
 
+
+        # TODO, check if beat is correctly increasing: might need to flip it before adding
+        last_new_note = np.concatenate([next_pred, next_beats_ind])
+        last_new_note = last_new_note[np.newaxis, :, :] # Shape now  (1, 28, 128)
+        last_new_note = np.swapaxes(last_new_note, 1, 2) # Shape now  (1, 128, 28)
         input_notes_reshape = last_new_note
-        
 
     outputs_joined = pd.DataFrame(outputs)
     all_probs_joined = pd.DataFrame(all_probs)

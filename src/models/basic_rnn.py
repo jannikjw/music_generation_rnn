@@ -393,7 +393,7 @@ class RNNMusicExperiment():
         raise NotImplementedError
 
     def get_save_plot_path(self, str_ind=""):
-        out = ""
+        out = "/plots/"
         out += self.get_name()
         out += str_ind
         out += "_".join([str(x).replace(".", "dot") for x in self.common_config.values()])

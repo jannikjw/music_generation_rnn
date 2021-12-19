@@ -172,9 +172,8 @@ def model_5_lstm_layer_with_artic(seq_length=15, learning_rate = 0.0005):
     ]
     return model,  callbacks
 
-def model_6_note_invariant(learning_rate=0.01):
+def model_6_note_invariant(learning_rate=0.01, total_vicinity=28):
 
-    total_vicinity = 28
     elements_per_time_step = 128
     input_shape = (elements_per_time_step, total_vicinity)
 
@@ -684,7 +683,9 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
     def get_model(self):
         print(f"in get_model self is {self}")
         model, callbacks = model_6_note_invariant(
-            learning_rate=self.common_config["learning_rate"]
+            learning_rate=self.common_config["learning_rate"],
+            # Total vicinity 24 notes + 4 beats + 1 midi + 12 context + 12 pitchclass 
+            total_vicinity=53,
         )
         return model, callbacks
         

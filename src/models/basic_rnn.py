@@ -2,7 +2,9 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_midi_objs
+from src.utils.visualization import plot_piano_roll
 import pdb
+from datetime import datetime
 
 def get_fat_diagonal_mat(mat_len, one_dis):
     ones = np.ones((mat_len, mat_len), dtype=np.float32)
@@ -339,7 +341,8 @@ class RNNMusicExperiment():
         # Pickle the model?
 
         print("Trying to predict some data")
-        print(self.predict_data(model, loaded_data))
+        predicted = self.predict_data(model, loaded_data)
+        self.plot_and_save_predicted_data(predicted)
         # Save music file?
         # Save music output plot?
 
@@ -358,6 +361,9 @@ class RNNMusicExperiment():
         raise NotImplementedError
 
     def get_model(self):
+        raise NotImplementedError
+
+    def get_name(self):
         raise NotImplementedError
 
     def train_model(self, prepared_data):
@@ -384,8 +390,22 @@ class RNNMusicExperiment():
     def predict_data(self):
         raise NotImplementedError
 
+    def get_save_plot_path(self):
+        out = ""
+        out += self.get_name()
+        out += "_".join(self.common_config.values())
+        out += datetime.now.strftime("%m-%d-%Y_%H-%M-%S")
+        out += ".png"
+        return out
+
+    def plot_and_save_predicted_data(self, predicted):
+        plot_piano_roll(predicted, self.get_save_plot_path())
+
 
 class RNNMusicExperimentOne(RNNMusicExperiment):
+
+    def get_name(self):
+        return "RNNMusicExperimentOne"
     
     def load_data(self):
         return self.basic_load_data()
@@ -415,6 +435,9 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
         RNNMusicExperiment ([type]): [description]
     """
     
+    def get_name(self):
+        return "RNNMusicExperimentTwo"
+
     def load_data(self):
         return self.basic_load_data()
 
@@ -442,6 +465,9 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
         RNNMusicExperiment ([type]): [description]
     """
 
+    def get_name(self):
+        return "RNNMusicExperimentThreee"
+
     def run(self):
 
         loaded_midi = self.load_data()
@@ -451,7 +477,9 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
         # Pickle the model?
 
         print("Trying to predict some data")
-        print(self.predict_data(model, prepared_data))
+        predicted = self.predict_data(model, prepared_data)
+        print("Trying to save some data")
+        self.plot_and_save_predicted_data(predicted)
         # Save music file?
         # Save music output plot?
 
@@ -489,7 +517,7 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
         return model, callbacks
         
     def predict_data(self, model, prepared_data):
-        return predict_notes_note_invariant(model, prepared_data)
+        return predict_notes_note_invariant(model, prepared_data[0])
 
 
 # Main training loop
@@ -516,7 +544,9 @@ if __name__ == "__main__":
         print("Trying Exp 3")
         exp = RNNMusicExperimentThreee(
             learning_rate=learning_rate,
+            epochs=1,
             batch_size=1,
+            num_music_files=1,
             epochs=2)
         exp.run()
 

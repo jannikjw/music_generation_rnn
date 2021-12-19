@@ -340,7 +340,7 @@ class RNNMusicExperiment():
         # Pickle the model?
 
         print("Trying to predict some data")
-        predicted = self.predict_data(model, loaded_data)
+        predicted, probs = self.predict_data(model, loaded_data)
         self.plot_and_save_predicted_data(predicted)
         # Save music file?
         # Save music output plot?
@@ -389,16 +389,17 @@ class RNNMusicExperiment():
     def predict_data(self):
         raise NotImplementedError
 
-    def get_save_plot_path(self):
+    def get_save_plot_path(self, str_ind=""):
         out = ""
         out += self.get_name()
-        out += "_".join(self.common_config.values())
-        out += datetime.now.strftime("%m-%d-%Y_%H-%M-%S")
+        out += str_ind
+        out += "_".join([str(x).replace(".", "dot") for x in self.common_config.values()])
+        out += datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
         out += ".png"
         return out
 
-    def plot_and_save_predicted_data(self, predicted):
-        plot_piano_roll(predicted, self.get_save_plot_path())
+    def plot_and_save_predicted_data(self, predicted, str_ind=""):
+        plot_piano_roll(predicted, self.get_save_plot_path(str_ind))
 
 
 class RNNMusicExperimentOne(RNNMusicExperiment):
@@ -476,9 +477,10 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
         # Pickle the model?
 
         print("Trying to predict some data")
-        predicted = self.predict_data(model, prepared_data)
+        predicted, probs = self.predict_data(model, prepared_data)
         print("Trying to save some data")
-        self.plot_and_save_predicted_data(predicted)
+        self.plot_and_save_predicted_data(predicted, "predicted_")
+        self.plot_and_save_predicted_data(probs, "predicted_")
         # Save music file?
         # Save music output plot?
 

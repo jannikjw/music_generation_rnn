@@ -195,7 +195,9 @@ class MidiSupport():
 
         play_articulated_concat = np.concatenate([notes_held.T, note_articulated.T], axis=1)
         play_articulated = play_articulated_concat.flatten().reshape(-1, min_length)
-        return pd.DataFrame(play_articulated).T
+        play_articulated = pd.DataFrame(play_articulated).T
+        play_articulated = play_articulated[play_articulated >= 1] = 1
+        return play_articulated
 
     def all_midi_obj_to_play_articulate(self, midi_obj_list):
         loaded_data = pd.concat([self.midi_obj_to_play_articulate(m) for m in midi_obj_list])

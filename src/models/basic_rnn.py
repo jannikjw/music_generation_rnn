@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_midi_objs, load_just_that_one_test_song
-from src.utils.visualization import plot_piano_roll
+from src.utils.visualization import plot_piano_roll, save_audio_file
 import pdb
 from datetime import datetime
 
@@ -435,6 +435,7 @@ class RNNMusicExperiment():
         print("Trying to predict some data")
         predicted, probs = self.predict_data(model, loaded_data)
         self.plot_and_save_predicted_data(predicted)
+        self.create_and_save_predicted_audio(predicted, "_music_")
         # Save music file?
         # Save music output plot?
 
@@ -491,8 +492,20 @@ class RNNMusicExperiment():
         out += ".png"
         return out
 
+    def get_save_audio_path(self, str_ind=""):
+        out = "audio/"
+        out += self.get_name()
+        out += str_ind
+        out += "_".join([str(x).replace(".", "dot") for x in self.common_config.values()])
+        out += datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+        out += ".wav"
+        return out
+
     def plot_and_save_predicted_data(self, predicted, str_ind=""):
         plot_piano_roll(predicted, self.get_save_plot_path(str_ind))
+
+    def create_and_save_predicted_audio(self, predicted, str_ind=""):
+        save_audio_file(predicted, self.get_save_audio_path(str_ind))
 
 
 class RNNMusicExperimentOne(RNNMusicExperiment):
@@ -638,6 +651,7 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         print("Trying to save some data")
         self.plot_and_save_predicted_data(predicted, "_predicted_")
         self.plot_and_save_predicted_data(probs, "_probs_")
+        self.create_and_save_predicted_audio(predicted, "_music_")
         # Save music file?
         # Save music output plot?
 

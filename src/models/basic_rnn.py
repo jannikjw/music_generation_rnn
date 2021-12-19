@@ -281,7 +281,7 @@ def predict_notes_note_invariant(model, reshaped_train_data, size=10):
         # output sequence will be the same length as the input. Try to either take the first or the last beat
 
       
-        play_bias = -0.25
+        play_bias = 0.01
         probs = probs + play_bias
         probs[probs > 1] = 1
         probs[probs < 0] = 0

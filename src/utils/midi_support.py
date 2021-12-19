@@ -272,7 +272,7 @@ class MidiSupport():
         
         return X, pd.DataFrame(y), elements_per_time_step
 
-    def prepare_song_note_invariant_plus_beats(self, all_midi_objs, vicinity=50):
+    def prepare_song_note_invariant_plus_beats(self, all_midi_objs, vicinity=24):
         '''
         Convert a given array of one-hot encoded midi notes into an array with the 
         following values (the number in brackets is the number of elements in the 

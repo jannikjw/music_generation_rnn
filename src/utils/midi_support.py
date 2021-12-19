@@ -436,6 +436,8 @@ def load_midi_objs(data_dir="", num_files=15, seq_length=15):
 
     num_files = num_files
     midi_objs = []
+    # Adding known song for training
+    filenames = ["mpkou9t"]
     for f in filenames[:num_files]:
         mf_i = ms.load_midi_file(f)
         

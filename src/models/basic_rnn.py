@@ -350,7 +350,6 @@ def predict_notes_note_invariant_plus_extras(model, reshaped_train_data, size=10
 
     last_beats_int = 0
 
-    first_input = input_notes_reshape
     for l in range(size):
 
         # probs = model.predict(input_notes_reshape)["pitch"].flatten()
@@ -358,16 +357,9 @@ def predict_notes_note_invariant_plus_extras(model, reshaped_train_data, size=10
         # model.reset_states()
         probs = model.predict(input_notes_reshape)
 
-        # Think I need to flip this
-        # probs = np.flip(probs, axis=1)
-
         # probs shape should be something like (256, beats)
         probs = pd.DataFrame(probs.reshape(num_beats, elements_per_time_step*2, order="C").T) 
 
-        # probs = probs[:, -1]
-        # output sequence will be the same length as the input. Try to either take the first or the last beat
-
-      
         play_bias = 0
         probs = probs + play_bias
         probs[probs > 1] = 1
@@ -402,18 +394,12 @@ def predict_notes_note_invariant_plus_extras(model, reshaped_train_data, size=10
         midi_row = midi_row.reshape((1, -1))
         next_pred = np.vstack((next_pred, midi_row, pitchclass_rows, previous_context))
         
-
-        # pdb.set_trace()
-        print(probs.T.tolist())
         last_beats_int += 1
         last_beats_int = last_beats_int%16
         next_beats_ind = np.array([int(x) for x in bin(last_beats_int)[2:].zfill(4)])
         next_beats_ind = next_beats_ind.reshape((4, 1))
         next_beats_ind = np.repeat(next_beats_ind, num_notes, axis=1)
 
-
-
-        # TODO, check if beat is correctly increasing: might need to flip it before adding
         last_new_note = np.concatenate([next_pred, next_beats_ind])
         last_new_note = last_new_note[np.newaxis, :, :] # Shape now  (1, 28, 128)
         last_new_note = np.swapaxes(last_new_note, 1, 2) # Shape now  (1, 128, 28)
@@ -649,8 +635,8 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         print("Trying to predict some data")
         predicted, probs = self.predict_data(model, prepared_data)
         print("Trying to save some data")
-        self.plot_and_save_predicted_data(predicted, "predicted_")
-        self.plot_and_save_predicted_data(probs, "predicted_")
+        self.plot_and_save_predicted_data(predicted, "_predicted_")
+        self.plot_and_save_predicted_data(probs, "_probs_")
         # Save music file?
         # Save music output plot?
 
@@ -690,7 +676,7 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         return model, callbacks
         
     def predict_data(self, model, prepared_data):
-        return predict_notes_note_invariant_plus_extras(model, prepared_data[0])
+        return predict_notes_note_invariant_plus_extras(model, prepared_data[0], size=100)
 
 
 
@@ -726,7 +712,7 @@ if __name__ == "__main__":
         print("Trying Exp 4")
         exp = RNNMusicExperimentFour(
             learning_rate=0.01,
-            epochs=1,
+            epochs=3,
             batch_size=1,
             num_music_files=1)
         exp.run()

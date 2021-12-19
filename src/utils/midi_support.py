@@ -433,6 +433,20 @@ def load_midi_objs(data_dir="", num_files=15, seq_length=15):
         raise Exception("Couldn't find the downloaded data :(")
 
     ms = MidiSupport()
+    midi_objs = []
+    for f in filenames[:num_files]:
+        mf_i = ms.load_midi_file(f)
+        midi_objs.append(mf_i)
+    return midi_objs
+
+def load_just_that_one_test_song(data_dir="", num_files=15, seq_length=15):
+
+    # filenames = glob.glob(str("music_generation_rnn/training_data/classical/**/**/*.mid*"))
+    filenames = glob.glob('mpkou9t')
+    if len(filenames) == 0:
+        raise Exception("Couldn't specific file 'mpkou9t' that this experiment is based on. Please download with terminal command wget \"https://tinyurl.com/mpkou9t\"")
+
+    ms = MidiSupport()
 
     num_files = num_files
     midi_objs = []

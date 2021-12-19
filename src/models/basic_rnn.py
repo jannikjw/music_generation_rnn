@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_midi_objs
+from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_midi_objs, load_just_that_one_test_song
 from src.utils.visualization import plot_piano_roll
 import pdb
 from datetime import datetime
@@ -617,12 +617,13 @@ class RNNMusicExperimentThreee(RNNMusicExperiment):
 class RNNMusicExperimentFour(RNNMusicExperiment):
     """Note invariance with articularion and beats and extras
 
+
     Args:
         RNNMusicExperiment ([type]): [description]
     """
 
     def get_name(self):
-        return "RNNMusicExperimentThreee"
+        return "RNNMusicExperimentFour"
 
     def run(self):
 
@@ -678,6 +679,26 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
     def predict_data(self, model, prepared_data):
         return predict_notes_note_invariant_plus_extras(model, prepared_data[0], size=100)
 
+class RNNMusicExperimentFive(RNNMusicExperiment):
+    """Note invariance with articularion and beats and extras
+
+
+    Same as experiment Four but just run on a single song
+
+    Args:
+        RNNMusicExperiment ([type]): [description]
+    """
+
+    def get_name(self):
+        return "RNNMusicExperimentFive"
+
+    def basic_load_data(self):
+        loaded = load_just_that_one_test_song(
+            num_files=self.common_config["num_music_files"],
+            seq_length=self.common_config["seq_length"]
+            )
+        return loaded
+
 
 
 # Main training loop
@@ -709,12 +730,20 @@ if __name__ == "__main__":
         #     num_music_files=1)
         # exp.run()
 
+        print("Trying Exp 5")
+        exp = RNNMusicExperimentFive(
+            learning_rate=0.01,
+            epochs=3,
+            batch_size=1,
+            num_music_files=1)
+        exp.run()
+
         print("Trying Exp 4")
         exp = RNNMusicExperimentFour(
             learning_rate=0.01,
             epochs=3,
             batch_size=1,
-            num_music_files=1)
+            num_music_files=5)
         exp.run()
 
 

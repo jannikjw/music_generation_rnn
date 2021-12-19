@@ -8,7 +8,7 @@ import pathlib
 #import pygame
 import pretty_midi
 import tensorflow as tf
-
+import pdb
 
 class MidiSupport():
 
@@ -199,7 +199,7 @@ class MidiSupport():
 
     def all_midi_obj_to_play_articulate(self, midi_obj_list):
         loaded_data = pd.concat([self.midi_obj_to_play_articulate(m) for m in midi_obj_list])
-        return loaded_data
+        return loaded_data.T
 
     def transform_beats_to_batch(self, X, y, elements_per_time_step):
         """Transform beat groups to new dimension

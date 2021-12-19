@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_midi_objs
-
+import pdb
 
 def get_fat_diagonal_mat(mat_len, one_dis):
     ones = np.ones((mat_len, mat_len), dtype=np.float32)

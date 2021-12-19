@@ -12,7 +12,7 @@ def plot_piano_roll(note_df, file_path):
 def save_audio_file(predicted, filepath):
     tst = 80 * predicted.T.values
     tst = tst[range(1, 257, 2), :]
-    new_midi = MidiSupport().piano_roll_to_pretty_midi(tst, fs=5)
+    new_midi = MidiSupport().piano_roll_to_pretty_midi(tst, fs=10)
     _SAMPLING_RATE = 16000
     seconds = 30
     waveform = new_midi.fluidsynth(fs=_SAMPLING_RATE)

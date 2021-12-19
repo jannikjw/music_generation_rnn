@@ -261,6 +261,7 @@ def predict_notes_note_invariant(model, reshaped_train_data, size=10):
     all_probs = []
     num_notes = 128
     num_beats = 1
+    elements_per_time_step = 128
     offset = np.random.choice(range(len(reshaped_train_data)))
     input_notes = reshaped_train_data[offset:offset+num_beats, :, :]
     # input_notes_reshape = input_notes.reshape(1, num_notes, total_vicinity)

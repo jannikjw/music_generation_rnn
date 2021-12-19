@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from src.utils.midi_support import MidiSupport
+from IPython import display
 
 def plot_piano_roll(note_df, file_path):
 
@@ -17,5 +18,6 @@ def save_audio_file(predicted, filepath):
     waveform = new_midi.fluidsynth(fs=_SAMPLING_RATE)
     # Take a sample of the generated waveform to mitigate kernel resets
     waveform_short = waveform[:seconds*_SAMPLING_RATE]
+    audtst = display.Audio(waveform_short, rate=_SAMPLING_RATE)
     with open(filepath, "wb") as f:
-        f.write(waveform_short.data)
+        f.write(audtst.data)

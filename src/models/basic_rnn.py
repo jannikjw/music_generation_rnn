@@ -173,12 +173,11 @@ def model_5_lstm_layer_with_artic(seq_length=15, learning_rate = 0.0005):
     return model,  callbacks
 
 
-def model_6_note_invariant(learning_rate = 0.0005):
+def model_6_note_invariant(learning_rate=0.01):
 
     total_vicinity = 28
     elements_per_time_step = 128
     input_shape = (elements_per_time_step, total_vicinity)
-    learning_rate = 0.01
 
     model = tf.keras.Sequential()
     model.add(tf.keras.Input(shape=input_shape))
@@ -543,11 +542,10 @@ if __name__ == "__main__":
 
         print("Trying Exp 3")
         exp = RNNMusicExperimentThreee(
-            learning_rate=learning_rate,
+            learning_rate=0.01,
             epochs=1,
             batch_size=1,
-            num_music_files=1,
-            epochs=2)
+            num_music_files=1)
         exp.run()
 
 

@@ -69,7 +69,7 @@ class MidiSupport():
         ret = pd.concat([input_arr_df, all_beats], axis=1)
         return ret
 
-    def add_midi_value(arr, n_notes):
+    def add_midi_value(self, arr, n_notes):
         '''
         Create a row of the note values by creating a range from the column indices % 12. 
         Shift by 1 because the first column does not have previous vicinity and is omitted.
@@ -82,7 +82,7 @@ class MidiSupport():
         midi_row = (np.arange(arr.shape[1]) + 1) % n_notes
         return midi_row
 
-    def calculate_pitchclass(midi_row, arr):
+    def calculate_pitchclass(self, midi_row, arr):
         '''
         Create an array of 12 one-hot encoded pitchclasses. Will be 1 at the position 
         of the current note, starting at A for 0 and increasing by 1 per half-step, 
@@ -97,7 +97,7 @@ class MidiSupport():
         pitchclasses = np.array([[int(i == pitch % 12) for i in range(12)] for pitch in midi_row]).T
         return pitchclasses
     
-    def build_context(arr, midi_row, pitchclass_rows):
+    def build_context(self, arr, midi_row, pitchclass_rows):
         '''
         Create an array of 12 one-hot encoded pitchclasses. Value at index i will be 
         the number of times any note x where (x-i-pitchclass) mod 12 was played last 
@@ -116,7 +116,8 @@ class MidiSupport():
         df["pitchclass"] = df["index"].apply(lambda x: x % 12)
         df = df.groupby("pitchclass").sum()
         df = df.drop(["index"], axis=1)
-        return np.array(df)
+        ret = np.array(df)
+        return ret
 
     def song_to_beats(self, song_df, beats_expanded):
         resampled = song_df.loc[beats_expanded]

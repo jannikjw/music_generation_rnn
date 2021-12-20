@@ -43,8 +43,6 @@ class MidiSupport():
         return pd.DataFrame({name: np.array(value) for name, value in notes.items()})
 
     def song_to_beat_articulation(self, song_df, beats_expanded):
-        print("starting")
-
         note_sub_df_np = song_df.values
         changed = (note_sub_df_np[1:] > note_sub_df_np[:-1])
 

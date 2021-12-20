@@ -78,11 +78,6 @@ def model_4_lstm_layer_limited_connectivity(seq_length=15, learning_rate = 0.000
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
-    model.compile(loss=loss, optimizer=optimizer)
-
-    model.summary()
-
-
     model.compile(
         loss=loss,
         loss_weights={
@@ -220,6 +215,7 @@ def model_7_google(learning_rate=0.005, seq_length=25):
 
     model = tf.keras.Model(inputs, outputs)
 
+    model.summary()
     loss = {
         'pitch': tf.keras.losses.SparseCategoricalCrossentropy(
         from_logits=True),
@@ -481,17 +477,28 @@ class RNNMusicExperiment():
     
     def get_name(self):
         raise NotImplementedError
+        
+    def set_model(self):
+        self.model, self.callbacks = model_5_lstm_layer_with_artic(
+            learning_rate=self.common_config["learning_rate"],
+            seq_length=self.common_config["seq_length"]
+        )
 
     def run(self):
+        self.set_model()
         loaded_data = self.load_data()
         prepared_data = self.prepare_data(loaded_data)
+        print("Training...")
         self.model, self.history = self.train_model(prepared_data)
         # Save training stats?
         # Pickle the model?
 
-        print("Predicting data")
+        print("Predicting data...")
         predicted, probs = self.predict_data(self.model, loaded_data)
+        
+        print("Saving data...")
         self.plot_and_save_predicted_data(predicted)
+        self.plot_and_save_predicted_data(probs)
         # Save music file?
         # Save music output plot?
 
@@ -510,7 +517,7 @@ class RNNMusicExperiment():
         raise NotImplementedError
 
     def train_model(self, prepared_data):
-        model, callbacks = self.get_model()
+        model, callbacks = self.model, self.callbacks
         print(f"type prepared_data is {type(prepared_data)}")
         # seq_length, _ = song_df.shape
         # buffer_size = n_notes - seq_length  # the number of items in the dataset
@@ -541,7 +548,8 @@ class RNNMusicExperiment():
         return out
 
     def plot_and_save_predicted_data(self, predicted, str_ind=""):
-        plot_piano_roll(predicted, self.get_save_plot_path(str_ind))
+        if predicted is not None:
+            plot_piano_roll(predicted, self.get_save_plot_path(str_ind))
 
 
 class RNNMusicExperimentOne(RNNMusicExperiment):
@@ -553,18 +561,10 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
         return self.basic_load_data()
 
     def prepare_data(self, midi_objs):
-        play_articulated = RNNMusicDataSetPreparer().all_midi_obj_to_play_articulate(midi_objs)
+        play_articulated = MidiSupport().all_midi_obj_to_play_articulate(midi_objs)
         seq_ds = RNNMusicDataSetPreparer().prepare(play_articulated)
         # TODO: Some models return a DataSet and some return X_train, y_train
         return seq_ds
-
-    def get_model(self):
-        print(f"in get_model self is {self}")
-        model, callbacks = model_5_lstm_layer_with_artic(
-            learning_rate=self.common_config["learning_rate"],
-            seq_length=self.common_config["seq_length"]
-        )
-        return model, callbacks
         
     def predict_data(self, model, loaded_data):
         return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
@@ -579,6 +579,12 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
     
     def get_name(self):
         return "RNNMusicExperimentTwo"
+              
+    def set_model(self):
+        self.model, self.callbacks = model_4_lstm_layer_limited_connectivity(
+            learning_rate=self.common_config["learning_rate"],
+            seq_length=self.common_config["seq_length"]
+        )
 
     def load_data(self):
         return self.basic_load_data()
@@ -587,14 +593,6 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
         seq_ds = RNNMusicDataSetPreparer().prepare(loaded_data)
         # TODO: Some models return a DataSet and some return X_train, y_train
         return seq_ds
-
-    def get_model(self):
-        print(f"in get_model self is {self}")
-        model, callbacks = model_4_lstm_layer_limited_connectivity(
-            learning_rate=self.common_config["learning_rate"],
-            seq_length=self.common_config["seq_length"]
-        )
-        return model, callbacks
         
     def predict_data(self, model, loaded_data):
         return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
@@ -605,26 +603,28 @@ class RNNMusicExperimentThree(RNNMusicExperiment):
 
     Args:
         RNNMusicExperiment ([type]): [description]
-    """
+    """ 
+    def run(self):
+        self.set_model()
+        loaded_data = self.load_data()
+        prepared_data = self.prepare_data(loaded_data)
+        print("Training...")
+        self.model, self.history = self.train_model(prepared_data)
 
+        print("Predicting data...")
+        predicted, probs = self.predict_data(self.model, prepared_data)
+        
+        print("Saving data...")
+        self.plot_and_save_predicted_data(predicted, "_predicted_")
+        self.plot_and_save_predicted_data(probs, "_probs_")
+    
     def get_name(self):
         return "RNNMusicExperimentThree"
-
-    def run(self):
-
-        loaded_midi = self.load_data()
-        prepared_data = self.prepare_data(loaded_midi)
-        model, history = self.train_model(prepared_data)
-        # Save training stats?
-        # Pickle the model?
-
-        print("Trying to predict some data")
-        predicted, probs = self.predict_data(model, prepared_data)
-        print("Trying to save some data")
-        self.plot_and_save_predicted_data(predicted, "predicted_")
-        self.plot_and_save_predicted_data(probs, "predicted_")
-        # Save music file?
-        # Save music output plot?
+    
+    def set_model(self):
+        self.model, self.callbacks = model_6_note_invariant(
+            learning_rate=self.common_config["learning_rate"]
+        )
 
     def train_model(self, prepared_data):
         """Train model overwrite
@@ -633,8 +633,7 @@ class RNNMusicExperimentThree(RNNMusicExperiment):
             prepared_data (tuple): X, y
 
         """
-        
-        model, callbacks = self.get_model()
+        model, callbacks = self.model, self.callbacks
         history = model.fit(prepared_data[0],
             prepared_data[1],
             epochs=self.common_config["epochs"],
@@ -651,13 +650,6 @@ class RNNMusicExperimentThree(RNNMusicExperiment):
         seq_ds = MidiSupport().prepare_song_note_invariant_plus_beats(loaded_data)
         # TODO: Some models return a DataSet and some return X_train, y_train
         return seq_ds
-
-    def get_model(self):
-        print(f"in get_model self is {self}")
-        model, callbacks = model_6_note_invariant(
-            learning_rate=self.common_config["learning_rate"]
-        )
-        return model, callbacks
         
     def predict_data(self, model, prepared_data):
         return predict_notes_note_invariant(model, prepared_data[0])
@@ -673,37 +665,37 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
 
     def get_name(self):
         return "RNNMusicExperimentFour"
+    
+    def set_model(self):
+        print(f"in get_model self is {self}")
+        self.model, self.callbacks = model_6_note_invariant(
+            learning_rate=self.common_config["learning_rate"],
+            # Total vicinity 24 notes + 4 beats + 1 midi + 12 context + 12 pitchclass 
+            total_vicinity=53,
+        )
 
     def run(self):
-
+        self.set_model()
         loaded_midi = self.load_data()
         prepared_data = self.prepare_data(loaded_midi)
-        model, history = self.train_model(prepared_data)
-        # Save training stats?
-        # Pickle the model?
+        print("Training...")
+        self.model, self.history = self.train_model(prepared_data)
 
-        print("Trying to predict some data")
-        predicted, probs = self.predict_data(model, prepared_data)
-        print("Trying to save some data")
+        print("Predicting data...")
+        predicted, probs = self.predict_data(self.model, prepared_data)
+        print("Saving data...")
         self.plot_and_save_predicted_data(predicted, "_predicted_")
         self.plot_and_save_predicted_data(probs, "_probs_")
         # Save music file?
         # Save music output plot?
 
     def train_model(self, prepared_data):
-        """Train model overwrite
-
-        Args:
-            prepared_data (tuple): X, y
-
-        """
-        
-        model, callbacks = self.get_model()
+        model, callbacks = self.model, self.callbacks
         history = model.fit(prepared_data[0],
             prepared_data[1],
             epochs=self.common_config["epochs"],
             callbacks=callbacks,
-            batch_size=1,
+            batch_size=self.common_config["batch_size"],
         )
         return model, history
     
@@ -715,15 +707,6 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         seq_ds = MidiSupport().prepare_song_note_invariant_plus_beats_and_more(loaded_data)
         # TODO: Some models return a DataSet and some return X_train, y_train
         return seq_ds
-
-    def get_model(self):
-        print(f"in get_model self is {self}")
-        model, callbacks = model_6_note_invariant(
-            learning_rate=self.common_config["learning_rate"],
-            # Total vicinity 24 notes + 4 beats + 1 midi + 12 context + 12 pitchclass 
-            total_vicinity=53,
-        )
-        return model, callbacks
         
     def predict_data(self, model, prepared_data):
         return predict_notes_note_invariant_plus_extras(model, prepared_data[0], size=100)
@@ -756,6 +739,14 @@ class RNNMusicExperimentSix(RNNMusicExperiment):
 
     def get_name(self):
         return "RNNMusicExperimentSix"
+    
+    def set_model(self):
+        print(f"in get_model self is {self}")
+        self.model, self.callbacks = model_7_google(
+            learning_rate=self.common_config["learning_rate"],
+            seq_length=self.common_config["seq_length"]
+        )
+        
 
     def run(self):
         self.key_order = ['pitch', 'step', 'duration']
@@ -801,7 +792,7 @@ class RNNMusicExperimentSix(RNNMusicExperiment):
             prepared_data (Tensorflow dataset): prepared_data
 
         """
-        model, callbacks = self.get_model()
+        model, callbacks = self.model, self.callbacks
         history = model.fit(
             prepared_data,
             epochs=self.common_config["epochs"],
@@ -809,14 +800,6 @@ class RNNMusicExperimentSix(RNNMusicExperiment):
         )
         return model, history
 
-    def get_model(self):
-        print(f"in get_model self is {self}")
-        model, callbacks = model_7_google(
-            learning_rate=self.common_config["learning_rate"],
-            seq_length=self.common_config["seq_length"]
-        )
-        return model, callbacks
-        
     def predict_data(self, model, prepared_data):
         key_order = self.key_order
         all_notes = self.all_notes

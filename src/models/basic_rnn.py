@@ -458,6 +458,9 @@ def predict_notes_note_invariant_plus_extras(model, reshaped_train_data, size=10
 
 
 class RNNMusicExperiment():
+    '''
+    Super class for all experiments
+    '''
 
     def __init__(self, sequence_length=15, epochs=10, learning_rate=0.001, batch_size=64, num_music_files=2, vocab_size=128) -> None:
         self.common_config = {
@@ -469,17 +472,25 @@ class RNNMusicExperiment():
             "vocab_size": vocab_size,
         }
         return
+    
+    def get_model(self):
+        return self.model
+        
+    def get_history(self):
+        return self.history
+    
+    def get_name(self):
+        raise NotImplementedError
 
     def run(self):
-
-        loaded_midi = self.load_data()
-        prepared_data = self.prepare_data(loaded_midi)
-        model, history = self.train_model(prepared_data)
+        loaded_data = self.load_data()
+        prepared_data = self.prepare_data(loaded_data)
+        self.model, self.history = self.train_model(prepared_data)
         # Save training stats?
         # Pickle the model?
 
-        print("Trying to predict some data")
-        predicted, probs = self.predict_data(model, loaded_data)
+        print("Predicting data")
+        predicted, probs = self.predict_data(self.model, loaded_data)
         self.plot_and_save_predicted_data(predicted)
         # Save music file?
         # Save music output plot?
@@ -496,12 +507,6 @@ class RNNMusicExperiment():
 
     def prepare_data(self):
         # TODO: Can the be in the form seq_ds or (X_train, y_train)
-        raise NotImplementedError
-
-    def get_model(self):
-        raise NotImplementedError
-
-    def get_name(self):
         raise NotImplementedError
 
     def train_model(self, prepared_data):
@@ -603,7 +608,7 @@ class RNNMusicExperimentThree(RNNMusicExperiment):
     """
 
     def get_name(self):
-        return "RNNMusicExperimentThreee"
+        return "RNNMusicExperimentThree"
 
     def run(self):
 
@@ -754,15 +759,7 @@ class RNNMusicExperimentSix(RNNMusicExperiment):
 
     def run(self):
         self.key_order = ['pitch', 'step', 'duration']
-        
-        loaded_midi = self.load_data()
-        prepared_data = self.prepare_data(loaded_midi)
-        model, history = self.train_model(prepared_data)
-
-        print("Trying to predict some data")
-        predicted = self.predict_data(model, prepared_data)
-        print("Trying to save some data")
-        self.plot_and_save_predicted_data(predicted, "predicted_")
+        super().run()
 
     def load_data(self):
         return self.basic_load_data()
@@ -878,7 +875,7 @@ class RNNMusicExperimentSix(RNNMusicExperiment):
             prev_start = start
 
         generated_notes = pd.DataFrame(generated_notes, columns=(*self.key_order, 'start', 'end'))
-        return generated_notes
+        return generated_notes, None
 
 # Main training loop
 if __name__ == "__main__":

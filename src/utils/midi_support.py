@@ -10,6 +10,7 @@ import pretty_midi
 import tensorflow as tf
 import pdb
 import collections
+import fluidsynth
 
 class MidiSupport():
     def __init__(self):
@@ -423,6 +424,15 @@ class MidiSupport():
         return pm
 
     def custom_piano_roll_to_midi(song_arr, fs=10):
+        ''' 
+        This function converts an array in our custom data format that includes articulation and 
+        beats into a pretty midi file so that it can be easily plotted and played.
+        Inputs:
+            - song_arr: 2D-Numpy Array with shape (2*number of notes, timesteps)
+            - fs: sampling frequency.
+        Outputs:
+            - pm: Pretty-Midi file 
+        '''
         # Create arrays for played and articulation from song array
         piano_df = pd.DataFrame(song_arr)
         piano_df["index"] = piano_df.index
@@ -557,10 +567,19 @@ class RNNMusicDataSetPreparer():
 
         return sequences.map(split_labels, num_parallel_calls=tf.data.AUTOTUNE)
 
+def display_audio(pm: pretty_midi.PrettyMIDI, seconds=30):
+    '''
+    This function is copied from the TensorFlow tutorial for music generation (https://www.tensorflow.org/tutorials/audio/music_generation).
+    '''
+    waveform = pm.fluidsynth(fs=_SAMPLING_RATE)
+    # Take a sample of the generated waveform to mitigate kernel resets
+    waveform_short = waveform[:seconds*_SAMPLING_RATE]
+    return display.Audio(waveform_short, rate=_SAMPLING_RATE)
+
 
 def download_and_save_data():
 
-    data_dir = pathlib.Path('data/maestro-v2.0.0')
+    data_dir = pathlib.Path('./data/maestro-v2.0.0')
     if not data_dir.exists():
         tf.keras.utils.get_file(
             'maestro-v2.0.0-midi.zip',
@@ -577,7 +596,7 @@ def load_midi_objs(data_dir="", num_files=15, seq_length=15):
     download_and_save_data()
 
     # filenames = glob.glob(str("music_generation_rnn/training_data/classical/**/**/*.mid*"))
-    filenames = glob.glob(str('data/maestro-v2.0.0/**/*.mid*'))
+    filenames = glob.glob(str('./data/maestro-v2.0.0/**/*.mid*'))
     if len(filenames) == 0:
         raise Exception("Couldn't find the downloaded data :(")
 
@@ -617,7 +636,7 @@ if __name__ == "__main__":
     ms = MidiSupport()
 
     mf = ms.load_midi_file(
-        "music_generation_rnn/training_data/Alan_Walker_Faded.midi")
+        "music_generation_rnn/data/Alan_Walker_Faded.midi")
 
     prepared = ms.midi_to_16_beats_processed(mf)
 

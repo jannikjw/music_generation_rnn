@@ -9,7 +9,7 @@ import pathlib
 import pretty_midi
 import tensorflow as tf
 import pdb
-
+import collections
 
 class MidiSupport():
     def __init__(self):
@@ -20,6 +20,26 @@ class MidiSupport():
 
     def midi_to_16_beats_processed(self, midi_file):
         return self.prepare_song(midi_file)
+    
+    def midi_to_notes(self, midi_file):
+        instrument = midi_file.instruments[0]
+        notes = collections.defaultdict(list)
+
+        # Sort the notes by start time
+        sorted_notes = sorted(instrument.notes, key=lambda note: note.start)
+        prev_start = sorted_notes[0].start
+
+        for note in sorted_notes:
+            start = note.start
+            end = note.end
+            notes['pitch'].append(note.pitch)
+            notes['start'].append(start)
+            notes['end'].append(end)
+            notes['step'].append(start - prev_start)
+            notes['duration'].append(end - start)
+            prev_start = start
+
+        return pd.DataFrame({name: np.array(value) for name, value in notes.items()})
 
     def song_to_beat_articulation(self, song_df, beats_expanded):
         print("starting")
@@ -503,6 +523,39 @@ class RNNMusicDataSetPreparer():
         print(f"y_tst.shape out is {X_tst.shape}")
 
         return seq_ds
+    
+    def create_sequences(
+        self,
+        dataset: tf.data.Dataset, 
+        seq_length: int,
+        vocab_size = 128,
+        key_order = list,
+    ) -> tf.data.Dataset:
+        """Returns TF Dataset of sequence and label examples. This function is copied from Tensorflow and is only used to replicate the music prediction model in the TensorFlow tutorial (https://www.tensorflow.org/tutorials/audio/music_generation). """
+        seq_length = seq_length+1
+
+        # Take 1 extra for the labels
+        windows = dataset.window(seq_length, shift=1, stride=1,
+        drop_remainder=True)
+
+        # `flat_map` flattens the" dataset of datasets" into a dataset of tensors
+        flatten = lambda x: x.batch(seq_length, drop_remainder=True)
+        sequences = windows.flat_map(flatten)
+
+        # Normalize note pitch
+        def scale_pitch(x):
+            x = x/[vocab_size,1.0,1.0]
+            return x
+
+        # Split the labels
+        def split_labels(sequences):
+            inputs = sequences[:-1]
+            labels_dense = sequences[-1]
+            labels = {key:labels_dense[i] for i,key in enumerate(key_order)}
+
+            return scale_pitch(inputs), labels
+
+        return sequences.map(split_labels, num_parallel_calls=tf.data.AUTOTUNE)
 
 
 def download_and_save_data():

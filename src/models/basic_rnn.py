@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_midi_objs, load_just_that_one_test_song
+from src.utils.midi_support import MidiSupport, RNNMusicDataSetPreparer, load_midi_objs, load_just_that_one_test_song, download_and_save_data
 from src.utils.visualization import plot_piano_roll
 import pdb
 from datetime import datetime
@@ -194,6 +194,51 @@ def model_6_note_invariant(learning_rate=0.01, total_vicinity=28):
         optimizer=optimizer,
         metrics=['mse']
     )
+    return model, None
+
+def model_7_google(learning_rate=0.005, seq_length=25):
+    '''
+    This function is copied from Tensorflow and is only used to replicate the music prediction model in the
+    TensorFlow tutorial (https://www.tensorflow.org/tutorials/audio/music_generation).
+    '''
+    def mse_with_positive_pressure(y_true: tf.Tensor, y_pred: tf.Tensor):
+        mse = (y_true - y_pred) ** 2
+        positive_pressure = 10 * tf.maximum(-y_pred, 0.0)
+        return tf.reduce_mean(mse + positive_pressure)
+    
+    input_shape = (seq_length, 3)
+    learning_rate = 0.005
+
+    inputs = tf.keras.Input(input_shape)
+    x = tf.keras.layers.LSTM(128)(inputs)
+
+    outputs = {
+        'pitch': tf.keras.layers.Dense(128, name='pitch')(x),
+        'step': tf.keras.layers.Dense(1, name='step')(x),
+        'duration': tf.keras.layers.Dense(1, name='duration')(x),
+    }
+
+    model = tf.keras.Model(inputs, outputs)
+
+    loss = {
+        'pitch': tf.keras.losses.SparseCategoricalCrossentropy(
+        from_logits=True),
+        'step': mse_with_positive_pressure,
+        'duration': mse_with_positive_pressure,
+    }
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+    
+    model.compile(
+    loss=loss,
+    loss_weights={
+        'pitch': 0.05,
+        'step': 1.0,
+        'duration':1.0,
+        },
+        optimizer=optimizer,
+    )
+    
     return model, None
 
 def predict_notes_256_sigmoid(model, train_data, size=10):
@@ -414,13 +459,14 @@ def predict_notes_note_invariant_plus_extras(model, reshaped_train_data, size=10
 
 class RNNMusicExperiment():
 
-    def __init__(self, sequence_length=15, epochs=10, learning_rate=0.001, batch_size=64, num_music_files=2) -> None:
+    def __init__(self, sequence_length=15, epochs=10, learning_rate=0.001, batch_size=64, num_music_files=2, vocab_size=128) -> None:
         self.common_config = {
             "seq_length": sequence_length,
             "learning_rate": learning_rate,
             "epochs": epochs,
             "batch_size": batch_size,
             "num_music_files": num_music_files,
+            "vocab_size": vocab_size,
         }
         return
 
@@ -459,8 +505,6 @@ class RNNMusicExperiment():
         raise NotImplementedError
 
     def train_model(self, prepared_data):
-
-        
         model, callbacks = self.get_model()
         print(f"type prepared_data is {type(prepared_data)}")
         # seq_length, _ = song_df.shape
@@ -551,7 +595,7 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
         return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
 
 
-class RNNMusicExperimentThreee(RNNMusicExperiment):
+class RNNMusicExperimentThree(RNNMusicExperiment):
     """Note invariance with articularion
 
     Args:
@@ -698,8 +742,143 @@ class RNNMusicExperimentFive(RNNMusicExperimentFour):
             seq_length=self.common_config["seq_length"]
             )
         return loaded
+    
+class RNNMusicExperimentSix(RNNMusicExperiment):
+    """Google Tutorial Version
+    RNNMusicExperiment ([type]): Implements the model described by Google here. Only used for performance 
+    comparisons: https://www.tensorflow.org/tutorials/audio/music_generation
+    """
 
+    def get_name(self):
+        return "RNNMusicExperimentSix"
 
+    def run(self):
+        self.key_order = ['pitch', 'step', 'duration']
+        
+        loaded_midi = self.load_data()
+        prepared_data = self.prepare_data(loaded_midi)
+        model, history = self.train_model(prepared_data)
+
+        print("Trying to predict some data")
+        predicted = self.predict_data(model, prepared_data)
+        print("Trying to save some data")
+        self.plot_and_save_predicted_data(predicted, "predicted_")
+
+    def load_data(self):
+        return self.basic_load_data()
+
+    def prepare_data(self, loaded_data):
+        #seq_ds is in form X, y here
+        seq_length = self.common_config["seq_length"]
+        num_files = self.common_config["num_music_files"]
+        batch_size = self.common_config["batch_size"]
+        
+        all_notes = []
+        for f in loaded_data[:num_files]:
+            notes = MidiSupport().midi_to_notes(f)
+            all_notes.append(notes)
+
+        all_notes = pd.concat(all_notes)
+        self.all_notes = all_notes
+        n_notes = len(all_notes)
+        
+        train_notes = np.stack([all_notes[key] for key in self.key_order], axis=1)
+        
+        notes_ds = tf.data.Dataset.from_tensor_slices(train_notes)
+        
+        seq_ds = RNNMusicDataSetPreparer().create_sequences(notes_ds, seq_length=seq_length, key_order=self.key_order)
+        
+        buffer_size = n_notes - seq_length  # the number of items in the dataset
+        train_ds = (seq_ds
+            .shuffle(buffer_size)
+            .batch(batch_size, drop_remainder=True)
+            .cache()
+            .prefetch(tf.data.experimental.AUTOTUNE))
+        
+        return train_ds
+    
+    def train_model(self, prepared_data):
+        """Train model overwrite
+
+        Args:
+            prepared_data (Tensorflow dataset): prepared_data
+
+        """
+        model, callbacks = self.get_model()
+        history = model.fit(
+            prepared_data,
+            epochs=self.common_config["epochs"],
+            callbacks=callbacks,
+        )
+        return model, history
+
+    def get_model(self):
+        print(f"in get_model self is {self}")
+        model, callbacks = model_7_google(
+            learning_rate=self.common_config["learning_rate"],
+            seq_length=self.common_config["seq_length"]
+        )
+        return model, callbacks
+        
+    def predict_data(self, model, prepared_data):
+        key_order = self.key_order
+        all_notes = self.all_notes
+        seq_length = self.common_config["seq_length"]
+        vocab_size = self.common_config["vocab_size"]
+
+        
+        def predict_next_note(
+            notes: np.ndarray, 
+            keras_model: tf.keras.Model, 
+            temperature: float = 1.0) -> int:
+            """Generates a note IDs using a trained sequence model."""
+
+            assert temperature > 0
+
+            # Add batch dimension
+            inputs = tf.expand_dims(notes, 0)
+
+            predictions = model.predict(inputs)
+            pitch_logits = predictions['pitch']
+            step = predictions['step']
+            duration = predictions['duration']
+
+            pitch_logits /= temperature
+            pitch = tf.random.categorical(pitch_logits, num_samples=1)
+            pitch = tf.squeeze(pitch, axis=-1)
+            duration = tf.squeeze(duration, axis=-1)
+            step = tf.squeeze(step, axis=-1)
+
+            # `step` and `duration` values should be non-negative
+            step = tf.maximum(0, step)
+            duration = tf.maximum(0, duration)
+
+            return int(pitch), float(step), float(duration)
+    
+        temperature = 2.0
+        num_predictions = 120
+
+        sample_notes = np.stack([all_notes[key] for key in key_order], axis=1)
+
+        # The initial sequence of notes; pitch is normalized similar to training
+        # sequences
+        input_notes = (
+        sample_notes[:seq_length] / np.array([vocab_size, 1, 1]))
+
+        generated_notes = []
+        prev_start = 0
+        for _ in range(num_predictions):
+            pitch, step, duration = predict_next_note(input_notes, model, temperature)
+            start = prev_start + step
+            end = start + duration
+            input_note = (pitch, step, duration)
+            generated_notes.append((*input_note, start, end))
+            input_notes = np.delete(input_notes, 0, axis=0)
+            input_notes = np.append(input_notes, np.expand_dims(input_note, 0), axis=0)
+            prev_start = start
+
+        generated_notes = pd.DataFrame(generated_notes, columns=(*self.key_order, 'start', 'end'))
+        return generated_notes
 
 # Main training loop
 if __name__ == "__main__":
@@ -730,6 +909,16 @@ if __name__ == "__main__":
         #     num_music_files=1)
         # exp.run()
 
+        print("Trying Exp 6")
+        exp = RNNMusicExperimentSix(
+            learning_rate=0.005,
+            epochs=3,
+            batch_size=64,
+            num_music_files=5,
+            sequence_length=25,
+        )
+        exp.run()
+        
         print("Trying Exp 5")
         exp = RNNMusicExperimentFive(
             learning_rate=0.01,
@@ -743,7 +932,10 @@ if __name__ == "__main__":
             learning_rate=0.01,
             epochs=3,
             batch_size=1,
-            num_music_files=5)
+            num_music_files=5,
+        )
         exp.run()
+        
+        
 
 

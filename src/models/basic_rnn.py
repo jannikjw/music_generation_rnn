@@ -452,6 +452,77 @@ def predict_notes_note_invariant_plus_extras(model, reshaped_train_data, size=10
     all_probs_joined = pd.DataFrame(all_probs)
     return outputs_joined, all_probs_joined
 
+def predict_notes_note_invariant_plus_extras_multiple_time_steps(model, reshaped_train_data, num_beats=15, size=10):
+    """Predict notes
+    Same as before but uses sequence_length number of beats to predict output
+    """
+    outputs = []
+    all_probs = []
+    num_notes = 128
+    offset = np.random.choice(range(len(reshaped_train_data)))
+    input_notes = reshaped_train_data[offset:offset+num_beats, :, :]
+    input_notes_reshape = input_notes
+    last_beats =[str(x) for x in input_notes_reshape[0, -1, -4:]]
+    last_beats_int = int("".join(last_beats), 2)
+
+    first_input = input_notes_reshape
+    for l in range(size):
+
+        probs = model.predict(input_notes_reshape)
+        # probs shape should be something like (256, beats)
+        probs = probs.reshape(num_beats, elements_per_time_step*2, order="C").T
+
+        probs = probs[:, -1:]
+        # output sequence will be the same length as the input. Try to either take the first or the last beat
+
+        play_bias = 0
+        probs = probs + play_bias
+        probs[probs > 1] = 1
+        probs[probs < 0] = 0
+        out = np.zeros_like(probs)
+
+        out = np.random.binomial(1, probs, size=None).reshape(num_notes*2)
+
+        # Need to window across out to get the input form again.
+        out = out.reshape((256,1))
+        probs = probs.reshape((256,))
+        outputs.append(out.reshape(256,))
+        all_probs.append(probs)
+
+        this_vicin = total_vicinity-4-12-12-1
+        next_pred, _, _ = MidiSupport().windowed_data_across_notes_time(out, mask_length_x=this_vicin, return_labels=False)# Return (total_vicinity, 128)
+
+        # Get array of Midi values for each note value
+        n_notes = 128
+        midi_row = MidiSupport().add_midi_value(next_pred, n_notes)
+
+        # Get array of one hot encoded pitch values for each note value
+        pitchclass_rows = MidiSupport().calculate_pitchclass(midi_row, next_pred)
+
+        # Add total_pitch count repeated for each note window
+        previous_context = MidiSupport().build_context(next_pred, midi_row, pitchclass_rows)
+
+        midi_row = midi_row.reshape((1, -1))
+        next_pred = np.vstack((next_pred, midi_row, pitchclass_rows, previous_context))
+        
+        last_beats_int += 1
+        last_beats_int = last_beats_int%16
+        next_beats_ind = np.array([int(x) for x in bin(last_beats_int)[2:].zfill(4)])
+        next_beats_ind = next_beats_ind.reshape((4, 1))
+        next_beats_ind = np.repeat(next_beats_ind, num_notes, axis=1)
+
+        # TODO, check if beat is correctly increasing: might need to flip it before adding
+        last_new_note = np.concatenate([next_pred, next_beats_ind])
+        last_new_note = last_new_note[np.newaxis, :, :] # Shape now  (1, 28, 128)
+        last_new_note = np.swapaxes(last_new_note, 1, 2) # Shape now  (1, 128, 28)
+        
+        together = np.concatenate([input_notes_reshape[1:, :, :], last_new_note], axis=0)
+        input_notes_reshape = together
+
+    outputs_joined = pd.DataFrame(outputs)
+    all_probs_joined = pd.DataFrame(all_probs)
+    return outputs_joined, all_probs_joined
+
 
 class RNNMusicExperiment():
     '''
@@ -676,6 +747,10 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         RNNMusicExperiment ([type]): [description]
     """
 
+    def __init__(self, *args, num_beats_for_prediction=1, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.common_config["num_beats_for_prediction"] = num_beats_for_prediction
+
     def get_name(self):
         return "RNNMusicExperimentFour"
     
@@ -690,12 +765,15 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
     def run(self):
         self.set_model()
         loaded_midi = self.load_data()
-        prepared_data = self.prepare_data(loaded_midi)
+        self.prepared_data = self.prepare_data(loaded_midi)
         print("Training...")
-        self.model, self.history = self.train_model(prepared_data)
+        self.model, self.history = self.train_model(self.prepared_data)
+        self.predict_and_save_data()
+
+    def predict_and_save_data(self):
 
         print("Predicting data...")
-        predicted, probs = self.predict_data(self.model, prepared_data)
+        predicted, probs = self.predict_data(self.model, self.prepared_data)
         print("Saving data...")
         self.plot_and_save_predicted_data(predicted, "_predicted_")
         self.plot_and_save_predicted_data(probs, "_probs_")
@@ -723,7 +801,12 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         return seq_ds
         
     def predict_data(self, model, prepared_data):
-        return predict_notes_note_invariant_plus_extras(model, prepared_data[0], size=200)
+        return predict_notes_note_invariant_plus_extras_multiple_time_steps(
+            model,
+            prepared_data[0],
+            size=200,
+            num_beats=self.common_config["num_beats_for_prediction"])
+
 
 class RNNMusicExperimentFive(RNNMusicExperimentFour):
     """Note invariance with articularion and beats and extras
@@ -745,14 +828,15 @@ class RNNMusicExperimentFive(RNNMusicExperimentFour):
             )
         return loaded
     
-class RNNMusicExperimentSix(RNNMusicExperiment):
+
+class RNNMusicExperimentTFRef(RNNMusicExperiment):
     """Google Tutorial Version
     RNNMusicExperiment ([type]): Implements the model described by Google here. Only used for performance 
     comparisons: https://www.tensorflow.org/tutorials/audio/music_generation
     """
 
     def get_name(self):
-        return "RNNMusicExperimentSix"
+        return "RNNMusicExperimentTFRef"
     
     def set_model(self):
         print(f"in get_model self is {self}")
@@ -874,6 +958,7 @@ class RNNMusicExperimentSix(RNNMusicExperiment):
         generated_notes = pd.DataFrame(generated_notes, columns=(*self.key_order, 'start', 'end'))
         return generated_notes, None
 
+
 # Main training loop
 if __name__ == "__main__":
     
@@ -903,15 +988,15 @@ if __name__ == "__main__":
         #     num_music_files=1)
         # exp.run()
 
-        print("Trying Exp 6")
-        exp = RNNMusicExperimentSix(
-            learning_rate=0.005,
-            epochs=3,
-            batch_size=64,
-            num_music_files=5,
-            sequence_length=25,
-        )
-        exp.run()
+        # print("Trying Exp 6")
+        # exp = RNNMusicExperimentTFRef(
+        #     learning_rate=0.005,
+        #     epochs=3,
+        #     batch_size=64,
+        #     num_music_files=5,
+        #     sequence_length=25,
+        # )
+        # exp.run()
         
         print("Trying Exp 5")
         exp = RNNMusicExperimentFive(
@@ -921,6 +1006,18 @@ if __name__ == "__main__":
             num_music_files=1)
         exp.run()
 
+        print("Exp 5 predicting with 31 beats")
+        exp.common_config["num_beats_for_prediction"] = 31
+        exp.predict_and_save_data()
+
+        print("Exp 5 predicting with 15 beats")
+        exp.common_config["num_beats_for_prediction"] = 15
+        exp.predict_and_save_data()
+
+        print("Exp 5 predicting with 3 beats")
+        exp.common_config["num_beats_for_prediction"] = 3
+        exp.predict_and_save_data()
+
         print("Trying Exp 4")
         exp = RNNMusicExperimentFour(
             learning_rate=0.01,
@@ -929,6 +1026,18 @@ if __name__ == "__main__":
             num_music_files=5,
         )
         exp.run()
+
+        print("Exp 5 predicting with 31 beats")
+        exp.common_config["num_beats_for_prediction"] = 31
+        exp.predict_and_save_data()
+
+        print("Exp 5 predicting with 15 beats")
+        exp.common_config["num_beats_for_prediction"] = 15
+        exp.predict_and_save_data()
+
+        print("Exp 5 predicting with 3 beats")
+        exp.common_config["num_beats_for_prediction"] = 3
+        exp.predict_and_save_data()
         
         
 

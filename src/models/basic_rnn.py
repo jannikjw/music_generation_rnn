@@ -615,6 +615,7 @@ class RNNMusicExperiment():
         out += self.get_name()
         out += str_ind
         out += "_".join([str(x).replace(".", "dot") for x in self.common_config.values()])
+        out += "__"
         out += datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
         out += ".png"
         return out
@@ -639,7 +640,7 @@ class RNNMusicExperiment():
 class RNNMusicExperimentOne(RNNMusicExperiment):
 
     def get_name(self):
-        return "RNNMusicExperimentOne"
+        return "Exp1"
     
     def load_data(self):
         return self.basic_load_data()
@@ -662,7 +663,7 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
     """
     
     def get_name(self):
-        return "RNNMusicExperimentTwo"
+        return "Exp2"
               
     def set_model(self):
         self.model, self.callbacks = model_4_lstm_layer_limited_connectivity(
@@ -703,7 +704,7 @@ class RNNMusicExperimentThree(RNNMusicExperiment):
         self.plot_and_save_predicted_data(probs, "_probs_")
     
     def get_name(self):
-        return "RNNMusicExperimentThree"
+        return "Exp3"
     
     def set_model(self):
         self.model, self.callbacks = model_6_note_invariant(
@@ -752,7 +753,7 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         self.common_config["num_beats_for_prediction"] = num_beats_for_prediction
 
     def get_name(self):
-        return "RNNMusicExperimentFour"
+        return "Exp4"
     
     def set_model(self):
         print(f"in get_model self is {self}")
@@ -770,14 +771,14 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         self.model, self.history = self.train_model(self.prepared_data)
         self.predict_and_save_data()
 
-    def predict_and_save_data(self):
+    def predict_and_save_data(self, str_id=""):
 
         print("Predicting data...")
         predicted, probs = self.predict_data(self.model, self.prepared_data)
         print("Saving data...")
-        self.plot_and_save_predicted_data(predicted, "_predicted_")
-        self.plot_and_save_predicted_data(probs, "_probs_")
-        self.create_and_save_predicted_audio(predicted, "_music_")
+        self.plot_and_save_predicted_data(predicted, str_id + "_predicted_")
+        self.plot_and_save_predicted_data(probs, str_id + "_probs_")
+        self.create_and_save_predicted_audio(predicted, str_id + "_music_")
         # Save music file?
         # Save music output plot?
 
@@ -819,7 +820,7 @@ class RNNMusicExperimentFive(RNNMusicExperimentFour):
     """
 
     def get_name(self):
-        return "RNNMusicExperimentFive"
+        return "Exp5"
 
     def basic_load_data(self):
         loaded = load_just_that_one_test_song(
@@ -836,7 +837,7 @@ class RNNMusicExperimentTFRef(RNNMusicExperiment):
     """
 
     def get_name(self):
-        return "RNNMusicExperimentTFRef"
+        return "ExpTFRef"
     
     def set_model(self):
         print(f"in get_model self is {self}")

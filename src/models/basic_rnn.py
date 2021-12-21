@@ -822,10 +822,6 @@ class RNNMusicExperimentFive(RNNMusicExperimentFour):
         RNNMusicExperiment ([type]): [description]
     """
 
-    def __init__(self, *args, note_vicinity=24, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.common_config["note_vicinity"] = note_vicinity
-
     def get_name(self):
         return "Exp5"
 
@@ -842,6 +838,10 @@ class RNNMusicExperimentSeven(RNNMusicExperimentFour):
     Args:
         RNNMusicExperimentFour ([type]): [description]
     """
+    
+    def __init__(self, *args, note_vicinity=24, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.common_config["note_vicinity"] = note_vicinity
 
     def get_name(self):
         return "Exp7"

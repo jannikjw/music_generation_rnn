@@ -631,10 +631,13 @@ class RNNMusicExperiment():
 
     def plot_and_save_predicted_data(self, predicted, str_ind=""):
         if predicted is not None:
-            plot_piano_roll(predicted, self.get_save_plot_path(str_ind))
+            plot_piano_roll(predicted, self.get_save_plot_path("_both_" + str_ind), plot_type="both")
+            plot_piano_roll(predicted, self.get_save_plot_path("_artic_" + str_ind), plot_type="artic")
+            plot_piano_roll(predicted, self.get_save_plot_path("_note_held_" + str_ind), plot_type="note_held")
 
     def create_and_save_predicted_audio(self, predicted, str_ind=""):
-        save_audio_file(predicted, self.get_save_audio_path(str_ind))
+        save_audio_file(predicted, self.get_save_audio_path("_artic_" + str_ind), audio_type="artic")
+        save_audio_file(predicted, self.get_save_audio_path("_note_held_" + str_ind), audio_type="note_held")
 
 
 class RNNMusicExperimentOne(RNNMusicExperiment):

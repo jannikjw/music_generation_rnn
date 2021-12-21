@@ -15,7 +15,7 @@ def get_fat_diagonal_mat(mat_len, one_dis):
     return tf.convert_to_tensor(ones)
 
 # Kernel Regularizers for limited connectivity
-@tf.keras.utils.register_keras_serializable(package='Custom', name='kernel_regularizer_r')
+#@tf.keras.utils.register_keras_serializable(package='Custom', name='kernel_regularizer_r')
 def kernel_regularizer_a(kernel_weights):
    len_0, len_1 = kernel_weights.shape
    len_2 = int(len_1/4)
@@ -27,7 +27,7 @@ def kernel_regularizer_a(kernel_weights):
    penality = tf.math.reduce_sum((tf.math.abs(kernel_weights) * tf.transpose(mask_stacked)))
    return 0.01 * penality
 
-@tf.keras.utils.register_keras_serializable(package='Custom', name='recurrent_kernel_regularizer_b')
+#@tf.keras.utils.register_keras_serializable(package='Custom', name='recurrent_kernel_regularizer_b')
 def recurrent_kernel_regularizer_a(recurrent_kernel_weights):
    len_0, len_1 = recurrent_kernel_weights.shape
    len_2 = int(len_1/4)
@@ -633,11 +633,11 @@ class RNNMusicExperiment():
         if predicted is not None:
             plot_piano_roll(predicted, self.get_save_plot_path("_both_" + str_ind), plot_type="both")
             plot_piano_roll(predicted, self.get_save_plot_path("_artic_" + str_ind), plot_type="artic")
-            plot_piano_roll(predicted, self.get_save_plot_path("_note_held_" + str_ind), plot_type="note_held")
+            plot_piano_roll(predicted, self.get_save_plot_path("_note_hold_" + str_ind), plot_type="note_hold")
 
     def create_and_save_predicted_audio(self, predicted, str_ind=""):
         save_audio_file(predicted, self.get_save_audio_path("_artic_" + str_ind), audio_type="artic")
-        save_audio_file(predicted, self.get_save_audio_path("_note_held_" + str_ind), audio_type="note_held")
+        save_audio_file(predicted, self.get_save_audio_path("_note_hold_" + str_ind), audio_type="note_hold")
 
 
 class RNNMusicExperimentOne(RNNMusicExperiment):

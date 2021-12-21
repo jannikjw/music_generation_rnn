@@ -15,17 +15,15 @@ def note_and_artic_to_one(data, what="artic"):
     return ret
 
 def plot_piano_roll(note_df, file_path, plot_type="both"):
-    data = note_and_artic_to_one(note_df.T.values, what=plot_type)
-    fig=plt.figure()
+    data = note_and_artic_to_one(note_df, what=plot_type)
     plt.rcParams["figure.figsize"] = (40,10)
     plt.imshow(data, cmap='hot', interpolation='nearest', aspect="auto")
-    plt.close(fig)
     plt.savefig(file_path)
 
 def save_audio_file(predicted, filepath, audio_type="artic"):
     if audio_type not in ["artic", "note_hold"]:
         raise KeyError("what needs to be artic or note_hold")
-    data = note_and_artic_to_one(predicted.T.values, what=audio_type)
+    data = note_and_artic_to_one(predicted, what=audio_type)
     new_midi = MidiSupport().piano_roll_to_pretty_midi(data, fs=5)
     _SAMPLING_RATE = 16000
     seconds = 30

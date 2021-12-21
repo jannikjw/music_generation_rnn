@@ -459,18 +459,18 @@ def predict_notes_note_invariant_plus_extras_multiple_time_steps(model, reshaped
     outputs = []
     all_probs = []
     num_notes = 128
+    total_vicinity = 53
     offset = np.random.choice(range(len(reshaped_train_data)))
     input_notes = reshaped_train_data[offset:offset+num_beats, :, :]
     input_notes_reshape = input_notes
     last_beats =[str(x) for x in input_notes_reshape[0, -1, -4:]]
     last_beats_int = int("".join(last_beats), 2)
 
-    first_input = input_notes_reshape
     for l in range(size):
 
         probs = model.predict(input_notes_reshape)
         # probs shape should be something like (256, beats)
-        probs = probs.reshape(num_beats, elements_per_time_step*2, order="C").T
+        probs = probs.reshape(num_beats, num_notes*2, order="C").T
 
         probs = probs[:, -1:]
         # output sequence will be the same length as the input. Try to either take the first or the last beat

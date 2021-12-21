@@ -751,19 +751,19 @@ class RNNMusicExperimentFour(RNNMusicExperiment):
         RNNMusicExperiment ([type]): [description]
     """
 
-    def __init__(self, *args, num_beats_for_prediction=1, **kwargs):
+    def __init__(self, *args, num_beats_for_prediction=1, note_vicinity=24, **kwargs):
         super().__init__(*args, **kwargs)
         self.common_config["num_beats_for_prediction"] = num_beats_for_prediction
+        self.common_config["note_vicinity"] = note_vicinity
 
     def get_name(self):
         return "Exp4"
     
     def set_model(self):
-        print(f"in get_model self is {self}")
         self.model, self.callbacks = model_6_note_invariant(
             learning_rate=self.common_config["learning_rate"],
             # Total vicinity 24 notes + 4 beats + 1 midi + 12 context + 12 pitchclass 
-            total_vicinity=53,
+            total_vicinity=self.common_config["note_vicinity"]+4+1+12+12,
         )
 
     def run(self):
@@ -838,10 +838,6 @@ class RNNMusicExperimentSeven(RNNMusicExperimentFour):
     Args:
         RNNMusicExperimentFour ([type]): [description]
     """
-    
-    def __init__(self, *args, note_vicinity=24, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.common_config["note_vicinity"] = note_vicinity
 
     def get_name(self):
         return "Exp7"

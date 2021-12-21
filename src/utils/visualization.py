@@ -8,7 +8,6 @@ def plot_piano_roll(note_df, file_path):
     plt.imshow(note_df.T.values, cmap='hot', interpolation='nearest', aspect="auto")
     plt.savefig(file_path)
 
-
 def save_audio_file(predicted, filepath):
     tst = 80 * predicted.T.values
     tst = tst[range(1, 257, 2), :]
@@ -21,3 +20,13 @@ def save_audio_file(predicted, filepath):
     audtst = display.Audio(waveform_short, rate=_SAMPLING_RATE)
     with open(filepath, "wb") as f:
         f.write(audtst.data)
+    
+def plot_histories(histories, labels, parameter='loss'):
+    
+    for i, hist in enumerate(histories):
+        plt.plot(hist.history[parameter], label=labels[i])
+    plt.title(parameter.capitalize())
+    plt.ylabel(parameter)
+    plt.xlabel('No. epoch')
+    plt.legend(loc="upper left")
+    plt.show()

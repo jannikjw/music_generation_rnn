@@ -3,7 +3,9 @@ This repository is on a project to generate music using a biaxial recurrent neur
 
 ## Original Paper
 Original paper: https://link.springer.com/chapter/10.1007/978-3-319-55750-2_9
+
 Blog: https://www.danieldjohnson.com/2015/08/03/composing-music-with-recurrent-neural-networks/
+
 Github: https://github.com/danieldjohnson/biaxial-rnn-music-composition (The original code is written using Theano, a library that we did not use)
 
 

@@ -5,8 +5,6 @@ __pycache__/
 
 # Data
 data/
-plots/
-audio/
 
 # C extensions
 *.so

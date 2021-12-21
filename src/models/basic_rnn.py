@@ -452,7 +452,7 @@ def predict_notes_note_invariant_plus_extras(model, reshaped_train_data, size=10
     all_probs_joined = pd.DataFrame(all_probs)
     return outputs_joined, all_probs_joined
 
-def predict_notes_note_invariant_plus_extras_multiple_time_steps(model, reshaped_train_data, num_beats=15, size=10):
+def predict_notes_note_invariant_plus_extras_multiple_time_steps(model, reshaped_train_data, num_beats=15, size=10, note_vicinity=24):
     """Predict notes
     Same as before but uses sequence_length number of beats to predict output
     """
@@ -489,8 +489,8 @@ def predict_notes_note_invariant_plus_extras_multiple_time_steps(model, reshaped
         outputs.append(out.reshape(256,))
         all_probs.append(probs)
 
-        this_vicin = total_vicinity-4-12-12-1
-        next_pred, _, _ = MidiSupport().windowed_data_across_notes_time(out, mask_length_x=this_vicin, return_labels=False)# Return (total_vicinity, 128)
+        # note_vicinity = total_vicinity-4-12-12-1
+        next_pred, _, _ = MidiSupport().windowed_data_across_notes_time(out, mask_length_x=note_vicinity, return_labels=False)# Return (total_vicinity, 128)
 
         # Get array of Midi values for each note value
         n_notes = 128
@@ -822,6 +822,10 @@ class RNNMusicExperimentFive(RNNMusicExperimentFour):
         RNNMusicExperiment ([type]): [description]
     """
 
+    def __init__(self, *args, note_vicinity=24, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.common_config["note_vicinity"] = note_vicinity
+
     def get_name(self):
         return "Exp5"
 
@@ -832,6 +836,30 @@ class RNNMusicExperimentFive(RNNMusicExperimentFour):
             )
         return loaded
     
+class RNNMusicExperimentSeven(RNNMusicExperimentFour):
+    """Study on number of notes to have in the vicinity
+
+    Args:
+        RNNMusicExperimentFour ([type]): [description]
+    """
+
+    def get_name(self):
+        return "Exp7"
+
+    def prepare_data(self, loaded_data):
+        #seq_ds is in form X, y here
+        seq_ds = MidiSupport().prepare_song_note_invariant_plus_beats_and_more(loaded_data, vicinity=self.common_config["note_vicinity"])
+        # TODO: Some models return a DataSet and some return X_train, y_train
+        return seq_ds
+
+    def predict_data(self, model, prepared_data):
+        return predict_notes_note_invariant_plus_extras_multiple_time_steps(
+            model,
+            prepared_data[0],
+            size=200,
+            note_vicinity=self.common_config["note_vicinity"],
+            num_beats=self.common_config["num_beats_for_prediction"])
+
 
 class RNNMusicExperimentTFRef(RNNMusicExperiment):
     """Google Tutorial Version

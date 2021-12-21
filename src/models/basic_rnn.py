@@ -167,16 +167,16 @@ def model_5_lstm_layer_with_artic(seq_length=15, learning_rate = 0.0005):
     ]
     return model,  callbacks
 
-def model_6_note_invariant(learning_rate=0.01, total_vicinity=28):
+def model_6_note_invariant(learning_rate=0.01, num_hidden_nodes=50, total_vicinity=28):
 
     elements_per_time_step = 128
     input_shape = (elements_per_time_step, total_vicinity)
 
     model = tf.keras.Sequential()
     model.add(tf.keras.Input(shape=input_shape))
-    model.add(tf.keras.layers.LSTM(50,  return_sequences=True))
-    model.add(tf.keras.layers.LSTM(50,  return_sequences=True))
-    model.add(tf.keras.layers.LSTM(50,  return_sequences=True))
+    model.add(tf.keras.layers.LSTM(num_hidden_nodes,  return_sequences=True))
+    model.add(tf.keras.layers.LSTM(num_hidden_nodes,  return_sequences=True))
+    model.add(tf.keras.layers.LSTM(num_hidden_nodes,  return_sequences=True))
     model.add(tf.keras.layers.Dense(2, activation="sigmoid"))
 
     model.summary()
@@ -831,8 +831,9 @@ class RNNMusicExperimentFive(RNNMusicExperimentFour):
             seq_length=self.common_config["seq_length"]
             )
         return loaded
-    
-class RNNMusicExperimentSeven(RNNMusicExperimentFour):
+
+
+class RNNMusicExperimentSeven(RNNMusicExperimentFive):
     """Study on number of notes to have in the vicinity
 
     Args:
@@ -855,6 +856,32 @@ class RNNMusicExperimentSeven(RNNMusicExperimentFour):
             size=200,
             note_vicinity=self.common_config["note_vicinity"],
             num_beats=self.common_config["num_beats_for_prediction"])
+
+class RNNMusicExperimentEight(RNNMusicExperimentSeven):
+    """Study on increasing model capacitty
+
+    Args:
+        RNNMusicExperimentFour ([type]): [description]
+    """
+
+    def __init__(self, *args, num_hidden_nodes=50, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.common_config["num_hidden_nodes"] = num_hidden_nodes
+
+    def get_name(self):
+        return "Exp8"
+
+    def set_model(self):
+        self.model, self.callbacks = model_6_note_invariant(
+            learning_rate=self.common_config["learning_rate"],
+            num_hidden_nodes=self.common_config["num_hidden_nodes"],
+            # Total vicinity 24 notes + 4 beats + 1 midi + 12 context + 12 pitchclass 
+            total_vicinity=self.common_config["note_vicinity"]+4+1+12+12,
+        )
+    
+
+
+
 
 
 class RNNMusicExperimentTFRef(RNNMusicExperiment):

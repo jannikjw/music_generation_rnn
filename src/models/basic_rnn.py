@@ -857,6 +857,7 @@ class RNNMusicExperimentSeven(RNNMusicExperimentFive):
             note_vicinity=self.common_config["note_vicinity"],
             num_beats=self.common_config["num_beats_for_prediction"])
 
+
 class RNNMusicExperimentEight(RNNMusicExperimentSeven):
     """Study on increasing model capacitty
 
@@ -880,8 +881,19 @@ class RNNMusicExperimentEight(RNNMusicExperimentSeven):
         )
     
 
+class RNNMusicExperimentNine(RNNMusicExperimentEight):
+    """Build on Experiment Eight but trys to train on many songs
 
+    Args:
+        RNNMusicExperimentEight ([type]): [description]
+    """
 
+    def basic_load_data(self):
+        loaded = load_midi_objs(
+            num_files=self.common_config["num_music_files"],
+            seq_length=self.common_config["seq_length"]
+            )
+        return loaded
 
 
 class RNNMusicExperimentTFRef(RNNMusicExperiment):

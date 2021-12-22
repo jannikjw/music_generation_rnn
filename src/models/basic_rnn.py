@@ -737,7 +737,7 @@ class RNNMusicExperimentThree(RNNMusicExperiment):
         return seq_ds
         
     def predict_data(self, model, prepared_data):
-        return predict_notes_note_invariant(model, prepared_data[0])
+        return predict_notes_note_invariant(model, prepared_data[0], size=200)
 
 
 class RNNMusicExperimentFour(RNNMusicExperiment):

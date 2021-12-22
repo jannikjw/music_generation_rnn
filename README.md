@@ -1,6 +1,8 @@
 # Music Generation RNN
 This repository is on a project to generate music using a biaxial recurrent neural network. The project is inspired by the [research paper of Daniel J. Johnson](https://link.springer.com/chapter/10.1007/978-3-319-55750-2_9). The code is intended to replicate the orginial model as closely as possible using TensorFlow 2.0. The model uses LSTM layers and a convolution-like reshaping of the input to predict which notes will be played when. Additionally, we implement different approaches to data processing and model architectures. We report on the results of these experiments.
 
+A sample of our generated music can listened to here: https://youtu.be/CF0Wi2WEQOU
+
 ## Original Paper
 Original paper: https://link.springer.com/chapter/10.1007/978-3-319-55750-2_9
 
@@ -39,13 +41,12 @@ utils:  Stores support function like those needed to convert and visualize midi-
 
 ```
 ./
-├── audio
-├── data
+├── Project_Report.pdf
+├── rnn-music-generation.ipynb
 ├── plots
-├── run_scripts
 └── src
-    ├── models
-    └── utils
+    ├── models
+    └── utils
 ```
 
 ## Authors

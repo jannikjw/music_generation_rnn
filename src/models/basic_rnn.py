@@ -661,7 +661,7 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
         return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
 
 
-class RNNMusicExperimentTwo(RNNMusicExperiment):
+class RNNMusicExperimentTwo(RNNMusicExperimentOne):
     """Builds on Exp 1 by adding limited connectivity
 
     Args:
@@ -676,17 +676,6 @@ class RNNMusicExperimentTwo(RNNMusicExperiment):
             learning_rate=self.common_config["learning_rate"],
             seq_length=self.common_config["seq_length"]
         )
-
-    def load_data(self):
-        return self.basic_load_data()
-
-    def prepare_data(self, loaded_data):
-        seq_ds = RNNMusicDataSetPreparer().prepare(loaded_data)
-        # TODO: Some models return a DataSet and some return X_train, y_train
-        return seq_ds
-        
-    def predict_data(self, model, loaded_data):
-        return predict_notes_256_sigmoid(model=model, train_data=loaded_data, size=self.common_config["seq_length"])
 
 
 class RNNMusicExperimentThree(RNNMusicExperiment):

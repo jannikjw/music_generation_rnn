@@ -653,7 +653,7 @@ class RNNMusicExperimentOne(RNNMusicExperiment):
 
     def prepare_data(self, midi_objs):
         play_articulated = MidiSupport().all_midi_obj_to_play_articulate(midi_objs)
-        seq_ds = RNNMusicDataSetPreparer().prepare(play_articulated)
+        seq_ds = RNNMusicDataSetPreparer().prepare(play_articulated.T, seq_length=self.common_config["se"])
         # TODO: Some models return a DataSet and some return X_train, y_train
         return seq_ds
         

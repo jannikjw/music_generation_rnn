@@ -492,6 +492,10 @@ class RNNMusicDataSetPreparer():
 
     def prepare(self, all_song_dfs, seq_length=15):
 
+
+        print(f"all_song_dfs.shape in is {all_song_dfs.shape}")
+        all_song_dfs = MidiSupport().add_beat_location(all_song_dfs)
+
         print(f"all_song_dfs.shape in is {all_song_dfs.shape}")
         song_tensor = tf.convert_to_tensor(all_song_dfs)
         # song_tensor_reshape = tf.reshape(song_tensor, (6261, 128))

@@ -102,7 +102,7 @@ class MidiSupport():
         num_notes = 128
         # num_notes = 4
         total_len, _ = input_arr_df.shape
-
+        
         num_beats = total_len
 
         # Add an extra beat then trim it to be same shape as input later
@@ -110,13 +110,15 @@ class MidiSupport():
 
         bin_pattern_tst = np.array(
             [bin(x)[2:].zfill(4) for x in np.arange(0, beats_per_bar)])
-        repeated_str = np.repeat(bin_pattern_tst, num_notes, axis=0)
-        repeated_str = np.tile(repeated_str, num_bars)
+        
+        repeated_str = np.tile(bin_pattern_tst, num_bars)
         all_beats = np.array([list(x) for x in repeated_str], dtype=np.int32)
 
         all_beats = all_beats[:total_len, :]
 
         all_beats = pd.DataFrame(all_beats)
+        input_arr_df.reset_index(drop=True, inplace=True)
+        all_beats.reset_index(drop=True, inplace=True)
         ret = pd.concat([input_arr_df, all_beats], axis=1)
         return ret
 

@@ -550,27 +550,24 @@ class RNNMusicExperiment():
         raise NotImplementedError
         
     def set_model(self):
-        self.model, self.callbacks = model_5_lstm_layer_with_artic(
-            learning_rate=self.common_config["learning_rate"],
-            seq_length=self.common_config["seq_length"]
-        )
+        raise NotImplementedError
 
     def run(self):
         self.set_model()
-        loaded_data = self.load_data()
-        prepared_data = self.prepare_data(loaded_data)
+        self.loaded_data = self.load_data()
+        self.prepared_data = self.prepare_data(self.loaded_data)
         print("Training...")
-        self.model, self.history = self.train_model(prepared_data)
+        self.model, self.history = self.train_model(self.prepared_data)
         # Save training stats?
         # Pickle the model?
 
         print("Predicting data...")
-        predicted, probs = self.predict_data(self.model, loaded_data)
+        self.predicted, self.probs = self.predict_data(self.model, self.loaded_data)
         
         print("Saving data...")
-        self.plot_and_save_predicted_data(predicted)
-        self.plot_and_save_predicted_data(probs)
-        self.create_and_save_predicted_audio(predicted, "_music_")
+        self.plot_and_save_predicted_data(self.predicted)
+        self.plot_and_save_predicted_data(self.probs)
+        self.create_and_save_predicted_audio(self.predicted, "_music_")
         # Save music file?
         # Save music output plot?
 
@@ -641,6 +638,12 @@ class RNNMusicExperiment():
 
 
 class RNNMusicExperimentOne(RNNMusicExperiment):
+
+    def set_model(self):
+        self.model, self.callbacks = model_5_lstm_layer_with_artic(
+            learning_rate=self.common_config["learning_rate"],
+            seq_length=self.common_config["seq_length"]
+        )
 
     def get_name(self):
         return "Exp1"

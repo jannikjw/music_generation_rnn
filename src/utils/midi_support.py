@@ -60,7 +60,7 @@ class MidiSupport():
         note_changes = np.concatenate([aa.T, note_changes], axis=1)
         return note_changes
 
-    def add_beat_location(self, input_arr_df):
+    def add_beat_location(self, input_arr_df, num_beats=None):
         '''
         Add four rows to a dataframe where each row is either the played or the articulation 
         binary of a note and the columns are the timestepts
@@ -74,6 +74,36 @@ class MidiSupport():
         total_len, _ = input_arr_df.shape
 
         num_beats = total_len // num_notes
+
+        # Add an extra beat then trim it to be same shape as input later
+        num_bars = num_beats // 16 + 1
+
+        bin_pattern_tst = np.array(
+            [bin(x)[2:].zfill(4) for x in np.arange(0, beats_per_bar)])
+        repeated_str = np.repeat(bin_pattern_tst, num_notes, axis=0)
+        repeated_str = np.tile(repeated_str, num_bars)
+        all_beats = np.array([list(x) for x in repeated_str], dtype=np.int32)
+
+        all_beats = all_beats[:total_len, :]
+
+        all_beats = pd.DataFrame(all_beats)
+        ret = pd.concat([input_arr_df, all_beats], axis=1)
+        return ret
+
+    def add_beat_location_other(self, input_arr_df, num_beats=None):
+        '''
+        Add four rows to a dataframe where each row is either the played or the articulation 
+        binary of a note and the columns are the timestepts
+        Inputs:
+            - arr_df: Dataframe. Shape of (2*n_notes, timesteps*n_notes)
+            - repeat_amount: TODO:Explain
+        '''
+        beats_per_bar = 16
+        num_notes = 128
+        # num_notes = 4
+        total_len, _ = input_arr_df.shape
+
+        num_beats = total_len
 
         # Add an extra beat then trim it to be same shape as input later
         num_bars = num_beats // 16 + 1
@@ -494,7 +524,7 @@ class RNNMusicDataSetPreparer():
 
 
         print(f"tst all_song_dfs.shape in is {all_song_dfs.shape}")
-        all_song_dfs = MidiSupport().add_beat_location(all_song_dfs)
+        all_song_dfs = MidiSupport().add_beat_location_other(all_song_dfs)
         # all_song_dfs = all_song_dfs.T
 
         print(f"all_song_dfs.shape in is {all_song_dfs.shape}")

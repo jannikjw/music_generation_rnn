@@ -686,17 +686,22 @@ class RNNMusicExperimentThree(RNNMusicExperiment):
     """ 
     def run(self):
         self.set_model()
-        loaded_data = self.load_data()
-        prepared_data = self.prepare_data(loaded_data)
+        loaded_midi = self.load_data()
+        self.prepared_data = self.prepare_data(loaded_midi)
         print("Training...")
-        self.model, self.history = self.train_model(prepared_data)
+        self.model, self.history = self.train_model(self.prepared_data)
+        self.predict_and_save_data()
+
+    def predict_and_save_data(self, str_id=""):
 
         print("Predicting data...")
-        predicted, probs = self.predict_data(self.model, prepared_data)
-        
+        predicted, probs = self.predict_data(self.model, self.prepared_data)
         print("Saving data...")
-        self.plot_and_save_predicted_data(predicted, "_predicted_")
-        self.plot_and_save_predicted_data(probs, "_probs_")
+        self.plot_and_save_predicted_data(predicted, str_id + "_predicted_")
+        self.plot_and_save_predicted_data(probs, str_id + "_probs_")
+        self.create_and_save_predicted_audio(predicted, str_id + "_music_")
+        # Save music file?
+        # Save music output plot?
     
     def get_name(self):
         return "Exp3"
